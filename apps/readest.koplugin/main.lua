@@ -21,11 +21,12 @@ local ReadestSync = WidgetContainer:new{
 }
 
 local API_CALL_DEBOUNCE_DELAY = 30
-local SUPABAE_ANON_KEY_BASE64 = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5aaWMzbDRablZ6YW1weFpIaHJhbkZzZVhOaklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTXpReE1qTTJOekVzSW1WNGNDSTZNakEwT1RZNU9UWTNNWDAuM1U1VXFhb3VfMVNnclZlMWVvOXJBcGMwdUtqcWhwUWRVWGh2d1VIbVVmZw=="
+local ORIGINAL_SERVICE_DISABLED = true
+local DISABLED_MESSAGE = _("OpenReadest disables the original Readest cloud sync service in this plugin.")
 
 ReadestSync.default_settings = {
-    supabase_url = "https://readest.supabase.co",
-    supabase_anon_key = sha2.base64_to_bin(SUPABAE_ANON_KEY_BASE64),
+    supabase_url = nil,
+    supabase_anon_key = nil,
     auto_sync = false,
     user_email = nil,
     user_name = nil,
@@ -44,6 +45,17 @@ function ReadestSync:init()
     self.ui.menu:registerToMainMenu(self)
 end
 
+function ReadestSync:isServiceDisabled()
+    return ORIGINAL_SERVICE_DISABLED
+end
+
+function ReadestSync:showDisabledMessage(timeout)
+    UIManager:show(InfoMessage:new{
+        text = DISABLED_MESSAGE,
+        timeout = timeout or 3,
+    })
+end
+
 function ReadestSync:onDispatcherRegisterActions()
     Dispatcher:registerAction("readest_sync_set_autosync",
         { category="string", event="ReadestSyncToggleAutoSync", title=_("Set auto progress sync"), reader=true,
@@ -54,6 +66,13 @@ function ReadestSync:onDispatcherRegisterActions()
 end
 
 function ReadestSync:onReaderReady()
+    if self:isServiceDisabled() then
+        self.settings.auto_sync = false
+        G_reader_settings:saveSetting("readest_sync", self.settings)
+        self:onDispatcherRegisterActions()
+        return
+    end
+
     if self.settings.auto_sync and self.settings.access_token then
         UIManager:nextTick(function()
             self:pullBookConfig(false)
@@ -63,6 +82,23 @@ function ReadestSync:onReaderReady()
 end
 
 function ReadestSync:addToMainMenu(menu_items)
+    if self:isServiceDisabled() then
+        menu_items.readest_sync = {
+            sorting_hint = "tools",
+            text = _("Readest Sync"),
+            sub_item_table = {
+                {
+                    text = _("Original Readest cloud sync is disabled in OpenReadest"),
+                    callback = function()
+                        self:showDisabledMessage(4)
+                    end,
+                    separator = true,
+                },
+            }
+        }
+        return
+    end
+
     menu_items.readest_sync = {
         sorting_hint = "tools",
         text = _("Readest Sync"),
@@ -121,9 +157,16 @@ function ReadestSync:needsLogin()
 end
 
 function ReadestSync:tryRefreshToken()
+    if self:isServiceDisabled() then
+        return
+    end
+
     if self.settings.refresh_token and self.settings.expires_at
         and self.settings.expires_at < os.time() + self.settings.expires_in / 2 then
         local client = self:getSupabaseAuthClient()
+        if not client then
+            return
+        end
         client:refresh_token(self.settings.refresh_token, function(success, response)
             if success then
                 self.settings.access_token = response.access_token
@@ -139,6 +182,10 @@ function ReadestSync:tryRefreshToken()
 end
 
 function ReadestSync:getSupabaseAuthClient()
+    if self:isServiceDisabled() then
+        return nil
+    end
+
     if not self.settings.supabase_url or not self.settings.supabase_anon_key then
         return nil
     end
@@ -152,6 +199,10 @@ function ReadestSync:getSupabaseAuthClient()
 end
 
 function ReadestSync:getReadestSyncClient()
+    if self:isServiceDisabled() then
+        return nil
+    end
+
     if not self.settings.access_token or not self.settings.expires_at or self.settings.expires_at < os.time() then
         return nil
     end
@@ -164,6 +215,11 @@ function ReadestSync:getReadestSyncClient()
 end
 
 function ReadestSync:login(menu)
+    if self:isServiceDisabled() then
+        self:showDisabledMessage(4)
+        return
+    end
+
     if NetworkMgr:willRerunWhenOnline(function() self:login(menu) end) then
         return
     end
@@ -214,6 +270,11 @@ function ReadestSync:login(menu)
 end
 
 function ReadestSync:doLogin(email, password, menu)
+    if self:isServiceDisabled() then
+        self:showDisabledMessage(4)
+        return
+    end
+
     local client = self:getSupabaseAuthClient()
     if not client then
         UIManager:show(InfoMessage:new{
@@ -259,6 +320,20 @@ function ReadestSync:doLogin(email, password, menu)
 end
 
 function ReadestSync:logout(menu)
+    if self:isServiceDisabled() then
+        self.settings.access_token = nil
+        self.settings.refresh_token = nil
+        self.settings.expires_at = nil
+        self.settings.expires_in = nil
+        self.settings.auto_sync = false
+        G_reader_settings:saveSetting("readest_sync", self.settings)
+        if menu then
+            menu:updateItems()
+        end
+        self:showDisabledMessage(4)
+        return
+    end
+
     if self.access_token then
         local client = self:getSupabaseAuthClient()
         if client then
@@ -442,6 +517,13 @@ function ReadestSync:getCurrentBookConfig()
 end
 
 function ReadestSync:pushBookConfig(interactive)
+    if self:isServiceDisabled() then
+        if interactive then
+            self:showDisabledMessage(4)
+        end
+        return
+    end
+
     if not self.settings.access_token or not self.settings.user_id then
         if interactive then
             UIManager:show(InfoMessage:new{
@@ -516,6 +598,13 @@ function ReadestSync:pushBookConfig(interactive)
 end
 
 function ReadestSync:pullBookConfig(interactive)
+    if self:isServiceDisabled() then
+        if interactive then
+            self:showDisabledMessage(4)
+        end
+        return
+    end
+
     if not self.settings.access_token or not self.settings.user_id then
         if interactive then
             UIManager:show(InfoMessage:new{
@@ -608,6 +697,13 @@ function ReadestSync:pullBookConfig(interactive)
 end
 
 function ReadestSync:onReadestSyncToggleAutoSync(toggle)
+    if self:isServiceDisabled() then
+        self.settings.auto_sync = false
+        G_reader_settings:saveSetting("readest_sync", self.settings)
+        self:showDisabledMessage(4)
+        return true
+    end
+
     if toggle == self.settings.auto_sync then
         return true
     end
@@ -627,6 +723,10 @@ function ReadestSync:onReadestSyncPullProgress()
 end
 
 function ReadestSync:onCloseDocument()
+    if self:isServiceDisabled() then
+        return
+    end
+
     if self.settings.auto_sync and self.settings.access_token then
         NetworkMgr:goOnlineToRun(function()
             self:pushBookConfig(false)
@@ -635,6 +735,10 @@ function ReadestSync:onCloseDocument()
 end
 
 function ReadestSync:onPageUpdate(page)
+    if self:isServiceDisabled() then
+        return
+    end
+
     if self.settings.auto_sync and self.settings.access_token and page then
         if self.delayed_push_task then
             UIManager:unschedule(self.delayed_push_task)

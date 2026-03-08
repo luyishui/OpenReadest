@@ -9,6 +9,7 @@ OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力
 - 非官方 Fork：本仓库不是 Readest 官方仓库，且当前仓库明确来源于上游项目 Readest。
 - 功能保留：保留核心阅读能力与 WebDAV 同步能力。
 - 许可证：沿用并遵循 AGPL-3.0，LICENSE 保持许可证正文，Fork 归属与额外版权说明见 NOTICE.md。
+- AI 参与：本项目在部分代码整理、重构、文档撰写与测试流程中使用了 AI 辅助参与；所有变更仍由维护者审阅、取舍并对最终结果负责。
 
 ## 功能对比
 
@@ -27,6 +28,7 @@ OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力
 - 付费订阅与支付
 - 遥测与错误上报
 - Discord Rich Presence
+- KOReader 插件中的原 Readest 云同步入口
 
 ## 下载
 

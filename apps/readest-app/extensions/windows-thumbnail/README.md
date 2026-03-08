@@ -1,13 +1,13 @@
-# Windows Thumbnail Provider for Readest
+# Windows Thumbnail Provider for OpenReadest
 
-This crate provides Windows Explorer thumbnail support for eBook files when Readest is set as the default application.
+This crate provides Windows Explorer thumbnail support for eBook files when OpenReadest is set as the default application.
 
 ## Features
 
 - **Automatic Cover Extraction**: Extracts cover images from EPUB, MOBI, AZW, AZW3, FB2, CBZ, CBR files
-- **Readest Branding**: Adds a small Readest icon overlay at the bottom-right corner
+- **OpenReadest Branding**: Adds a small OpenReadest icon overlay at the bottom-right corner
 - **Smart Caching**: Caches generated thumbnails for faster subsequent loads
-- **File Association Aware**: Only shows thumbnails when Readest is the default app for the file type
+- **File Association Aware**: Only shows thumbnails when OpenReadest is the default app for the file type
 - **COM Integration**: Full Windows Shell extension implementation via `IThumbnailProvider`
 
 ## Supported Formats
@@ -43,7 +43,7 @@ cargo build --release --features cli
 
 ## Installation
 
-The thumbnail provider DLL is automatically registered when Readest is installed via the NSIS installer.
+The thumbnail provider DLL is automatically registered when OpenReadest is installed via the NSIS installer.
 
 ### Manual Registration (for development)
 
@@ -62,7 +62,7 @@ After registration, you may need to restart Windows Explorer or log out/in for c
 
 ## Usage (Development / Manual testing)
 
-For local development and testing, build the Windows DLL (or the library) from the Readest Tauri app folder and register it manually. The legacy CLI test harness used to live in the separate `packages/tauri` workspace, but the thumbnail handler implementation now lives inside Readest's Tauri app.
+For local development and testing, build the Windows DLL (or the library) from the OpenReadest Tauri app folder and register it manually. The legacy CLI test harness used to live in the separate `packages/tauri` workspace, but the thumbnail handler implementation now lives inside OpenReadest's Tauri app.
 
 Build the DLL (for Windows explorer integration):
 
@@ -86,7 +86,7 @@ regsvr32 /s /u target\release\windows_thumbnail.dll
 ie4uinit.exe -show
 ```
 
-This generates a thumbnail with the Readest overlay at the specified size.
+This generates a thumbnail with the OpenReadest overlay at the specified size.
 
 ## Architecture
 
@@ -99,13 +99,13 @@ This generates a thumbnail with the Readest overlay at the specified size.
 │                          │         │                             │
 │                          │         ▼                             │
 │                          │    Check File Association             │
-│                          │    (is Readest the default?)          │
+│                          │    (is OpenReadest the default?)      │
 │                          │         │                             │
 │                          │         ▼ (if yes)                    │
 │                          │    Extract Cover Image                │
 │                          │         │                             │
 │                          │         ▼                             │
-│                          │    Add Readest Overlay                │
+│                          │    Add OpenReadest Overlay            │
 │                          │         │                             │
 │                          │         ▼                             │
 │                          │    Return HBITMAP                     │

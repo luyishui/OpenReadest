@@ -52,7 +52,7 @@ git submodule update --init --recursive
 # might need to rerun this when code is updated
 pnpm install
 # copy pdfjs-dist to Next.js public directory
-pnpm --filter @readest/readest-app setup-pdfjs
+pnpm --filter @openreadest/app setup-pdfjs
 ```
 
 #### 3. Verify Dependencies Installation

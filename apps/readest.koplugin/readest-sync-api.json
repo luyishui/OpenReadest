@@ -1,5 +1,5 @@
 {
-  "base_url": "https://web.readest.com/api",
+  "base_url": "https://openreadest.invalid/disabled-api",
   "name": "readest-sync-api",
   "methods": {
     "pullChanges": {

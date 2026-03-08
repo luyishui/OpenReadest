@@ -26,10 +26,10 @@ A clear and concise description of what the expected behavior is.
 
 Operating System:
 
-Readest Version:
+OpenReadest Version:
 
 > **Example:**
 > Operating System: Android 14 (WebView 135.0)
-> Readest Version: 0.9.0
+> OpenReadest Version: 0.9.0
 > We are displaying custom scrollbars that disappear when the user is not scrolling. See ScrollWrapper.
 > Probably fixable with CSS
