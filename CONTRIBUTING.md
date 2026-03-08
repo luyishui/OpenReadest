@@ -1,112 +1,20 @@
-# Contribution Guidelines
+# 贡献指南
 
-When contributing to `OpenReadest`, whether on GitHub or in other community spaces:
+## 社区准则
 
-- Be respectful, civil, and open-minded.
-- Before opening a new pull request, try searching through the issue tracker of this repository for known issues or fixes.
-- If you want to make code changes based on your personal opinion(s), open an issue first describing the change you want to make, then open a pull request after the direction is aligned.
+无论您在 GitHub 还是其他社区空间参与 `OpenReadest` 项目，请遵循以下准则：
 
-## Project Positioning
+- 保持尊重、文明和开放的心态
+- 提交 Pull Request 前，请先搜索本仓库的 Issue 追踪器，避免重复提交
+- 如需进行代码变更，建议先创建 Issue 描述变更内容，待方向一致后再提交
 
-OpenReadest is an independently maintained project derived from Readest.
+## 项目定位
 
-- This repository is not the official Readest repository.
-- Changes proposed here should target OpenReadest first.
-- When a change is clearly upstreamable, it can be discussed separately for the original Readest project.
+**OpenReadest 是一个基于 Readest 的学习交流项目，非官方维护。**
 
-## How to Contribute
+- 本仓库仅用于学习交流，代码审查响应可能较慢
+- **如需正式贡献，请前往 Readest 官方仓库：** https://github.com/readest/readest
 
-### Prerequisites
+## 如何贡献
 
-In order to not waste your time implementing a change that has already been declined, or is generally not needed, start by opening an issue in this repository describing the problem you would like to solve.
-
-For the best experience building OpenReadest locally, use a recent version of Node.js and Rust. Refer to the [Tauri documentation](https://v2.tauri.app/start/prerequisites/) for details on setting up development environment prerequisites on different platforms.
-
-Basically you need to install or update the following development tools:
-
-- **Node.js** and **pnpm** for Next.js development
-- **Rust** and **Cargo** for Tauri development
-
-```bash
-nvm install v22
-nvm use v22
-npm install -g pnpm
-rustup update
-```
-
-### Getting Started
-
-To get started with OpenReadest, follow these steps to clone and build the project.
-
-#### 1. Clone the Repository
-
-```bash
-git clone https://github.com/luyishui/OpenReadest.git
-cd OpenReadest
-git submodule update --init --recursive
-```
-
-#### 2. Install Dependencies
-
-```bash
-# might need to rerun this when code is updated
-pnpm install
-# copy pdfjs-dist to Next.js public directory
-pnpm --filter @openreadest/app setup-pdfjs
-```
-
-#### 3. Verify Dependencies Installation
-
-To confirm that all dependencies are correctly installed, run the following command:
-
-```bash
-pnpm tauri info
-```
-
-This command will display information about the installed Tauri dependencies and configuration on your platform. Note that the output may vary depending on the operating system and environment setup. Please review the output specific to your platform for any potential issues.
-
-For Windows targets, “Build Tools for Visual Studio 2022” (or a higher edition of Visual Studio) and the “Desktop development with C++” workflow must be installed. For Windows ARM64 targets, the “VS 2022 C++ ARM64 build tools” and "C++ Clang Compiler for Windows" components must be installed. And make sure `clang` can be found in the path by adding `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\Llvm\x64\bin` for example in the environment variable `Path`.
-
-#### 4. Build for Development
-
-```bash
-pnpm tauri dev
-```
-
-#### 5. Build for Production
-
-```bash
-pnpm tauri build
-```
-
-Now you're all setup and can start implementing your changes.
-
-### Implement your changes
-
-This project is a monorepo. The main application code is currently in the `apps/openreadest-app` directory. Here are some useful scripts for developing the frontend without compiling Tauri:
-
-| Command          | Description                                        |
-| ---------------- | -------------------------------------------------- |
-| `pnpm dev-web`   | Starts the development server for the web app only |
-| `pnpm build-web` | Builds the web app                                 |
-
-Recommended Visual Studio Code plugins for development:
-
-- JavaScript and TypeScript Nightly (ms-vscode.vscode-typescript-next)
-- VS Code ESLint extension (dbaeumer.vscode-eslint)
-- Prettier - Code formatter (esbenp.prettier-vscode)
-- rust-analyzer (rust-lang.rust-analyzer) (for Tauri development only)
-
-### When you're done
-
-Check that your code follows the project's style guidelines by running:
-
-```bash
-pnpm build
-```
-
-Please also make a manual, functional test of your changes. When all that's done, open a pull request against this repository and describe the scope of the change clearly. If the change is intended for the original Readest project as well, handle that as a separate upstream contribution.
-
-## Credits
-
-This documented was inspired by the contributing guidelines for [cloudflare/wrangler2](https://github.com/cloudflare/wrangler2/blob/main/CONTRIBUTING.md).
+请参考 [Readest 官方项目](https://github.com/readest/readest) 的贡献指南。
