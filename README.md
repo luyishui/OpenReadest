@@ -1,12 +1,12 @@
 # OpenReadest
 
-OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力，并新增或强化 WebDAV 同步能力，用于私有云或自建 WebDAV 场景（坚果云、Nextcloud、群晖、WebDAV NAS 等）。
+OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力，并新增或强化 WebDAV 同步能力，用于私有云或自建 WebDAV 场景（坚果云、Nextcloud、群晖、WebDAV NAS 等）。上游项目仓库为 https://github.com/readest/readest 。
 
 本项目遵循 AGPL-3.0 许可证发布，并保留上游项目与第三方组件的版权和许可证声明。
 
 ## 声明
 
-- 非官方 Fork：本仓库不是 Readest 官方仓库。
+- 非官方 Fork：本仓库不是 Readest 官方仓库，且当前仓库明确来源于上游项目 Readest。
 - 功能保留：保留核心阅读能力与 WebDAV 同步能力。
 - 许可证：沿用并遵循 AGPL-3.0，LICENSE 保持许可证正文，Fork 归属与额外版权说明见 NOTICE.md。
 
@@ -44,11 +44,13 @@ OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力
 
 ## 版权与许可
 
-- 上游项目：Readest，原始版权归 Bilingify LLC 与 Readest contributors 所有。
+- 上游项目：Readest（https://github.com/readest/readest），原始版权归 Bilingify LLC 与 Readest contributors 所有。
 - Fork 修改：OpenReadest 的新增与修改部分版权归 luyishui 所有。
 - 许可证文本：详见 [LICENSE](LICENSE)。
 - Fork 归属与额外版权说明：详见 [NOTICE.md](NOTICE.md)。
 - 第三方组件：各自许可证继续按原要求保留与分发。
+
+如果你分发修改后的版本，仍应继续保留上游版权、许可证文本与第三方许可证声明。
 
 ## 使用的上游组件
 
