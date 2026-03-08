@@ -108,6 +108,9 @@ const EXPLICIT_OVERRIDES: Record<string, Record<string, string>> = {
       'OpenReadest is an independent fork and continued re-development of Readest.',
     'Copyright (c) 2026 luyishui. Based on Readest, originally developed by Bilingify LLC.':
       'Copyright (c) 2026 luyishui. Based on Readest, originally developed by Bilingify LLC.',
+    'Get Help from the Readest Community': 'Get Help from the OpenReadest Community',
+    'Need help? Contact our support team at support@readest.com':
+      'Need help? Please open an issue in the OpenReadest repository.',
     'Choose a new folder for OpenReadest to move its data into.':
       'Choose a new folder for OpenReadest to move its data into.',
     'OpenReadest will use the selected Readest data after restart. Please restart the application to complete the switch.':
@@ -216,6 +219,9 @@ const EXPLICIT_OVERRIDES: Record<string, Record<string, string>> = {
       'OpenReadest 是基于 Readest 的独立分支与持续再开发版本。',
     'Copyright (c) 2026 luyishui. Based on Readest, originally developed by Bilingify LLC.':
       '版权所有 (c) 2026 luyishui。项目基于 Readest，原始版本由 Bilingify LLC 开发。',
+    'Get Help from the Readest Community': '从 OpenReadest 社区获取帮助',
+    'Need help? Contact our support team at support@readest.com':
+      '需要帮助？请前往 OpenReadest 仓库提交 issue。',
     'Choose a new folder for OpenReadest to move its data into.':
       '为 OpenReadest 选择一个新的文件夹，用于迁移当前数据。',
     'OpenReadest will use the selected Readest data after restart. Please restart the application to complete the switch.':
@@ -324,6 +330,9 @@ const EXPLICIT_OVERRIDES: Record<string, Record<string, string>> = {
       'OpenReadest 是基於 Readest 的獨立分支與持續再開發版本。',
     'Copyright (c) 2026 luyishui. Based on Readest, originally developed by Bilingify LLC.':
       '版權所有 (c) 2026 luyishui。此專案基於 Readest，原始版本由 Bilingify LLC 開發。',
+    'Get Help from the Readest Community': '從 OpenReadest 社群獲取幫助',
+    'Need help? Contact our support team at support@readest.com':
+      '需要協助？請前往 OpenReadest 倉庫提交 issue。',
     'Choose a new folder for OpenReadest to move its data into.':
       '為 OpenReadest 選擇一個新的資料夾，用來遷移目前資料。',
     'OpenReadest will use the selected Readest data after restart. Please restart the application to complete the switch.':
