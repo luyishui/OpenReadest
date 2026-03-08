@@ -31,8 +31,8 @@ const DEFAULT_SUPPORT_CONFIG: Required<SupportConfig> = {
     '如果这些改动帮你把书库稳定用起来了，可以扫下面这张码支持一下开发、测试设备和持续更新。',
   imageUrl: '/support/sponsor-poster.jpg',
   fallbackImageUrl: '/icon.png',
-  projectHomepage: 'https://github.com/luyishui',
-  releaseNotesUrl: 'https://github.com/luyishui',
+  projectHomepage: 'https://github.com/luyishui/OpenReadest',
+  releaseNotesUrl: 'https://github.com/luyishui/OpenReadest/releases',
 };
 
 const mergeSupportConfig = (base: SupportConfig, override?: SupportConfig): Required<SupportConfig> => ({

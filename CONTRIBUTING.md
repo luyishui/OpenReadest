@@ -1,18 +1,26 @@
 # Contribution Guidelines
 
-When contributing to `Readest`, whether on GitHub or in other community spaces:
+When contributing to `OpenReadest`, whether on GitHub or in other community spaces:
 
 - Be respectful, civil, and open-minded.
-- Before opening a new pull request, try searching through the [issue tracker](https://github.com/readest/readest/issues) for known issues or fixes.
-- If you want to make code changes based on your personal opinion(s), make sure you open an issue first describing the changes you want to make, and open a pull request only when your suggestions get approved by maintainers.
+- Before opening a new pull request, try searching through the issue tracker of this repository for known issues or fixes.
+- If you want to make code changes based on your personal opinion(s), open an issue first describing the change you want to make, then open a pull request after the direction is aligned.
+
+## Project Positioning
+
+OpenReadest is an independently maintained project derived from Readest.
+
+- This repository is not the official Readest repository.
+- Changes proposed here should target OpenReadest first.
+- When a change is clearly upstreamable, it can be discussed separately for the original Readest project.
 
 ## How to Contribute
 
 ### Prerequisites
 
-In order to not waste your time implementing a change that has already been declined, or is generally not needed, start by [opening an issue](https://github.com/readest/readest/issues/new/choose) describing the problem you would like to solve.
+In order to not waste your time implementing a change that has already been declined, or is generally not needed, start by opening an issue in this repository describing the problem you would like to solve.
 
-For the best experience to build Readest for yourself, use a recent version of Node.js and Rust. Refer to the [Tauri documentation](https://v2.tauri.app/start/prerequisites/) for details on setting up the development environment prerequisites on different platforms.
+For the best experience building OpenReadest locally, use a recent version of Node.js and Rust. Refer to the [Tauri documentation](https://v2.tauri.app/start/prerequisites/) for details on setting up development environment prerequisites on different platforms.
 
 Basically you need to install or update the following development tools:
 
@@ -28,13 +36,13 @@ rustup update
 
 ### Getting Started
 
-To get started with Readest, follow these steps to clone and build the project.
+To get started with OpenReadest, follow these steps to clone and build the project.
 
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/readest/readest.git
-cd readest
+git clone https://github.com/luyishui/OpenReadest.git
+cd OpenReadest
 git submodule update --init --recursive
 ```
 
@@ -75,7 +83,7 @@ Now you're all setup and can start implementing your changes.
 
 ### Implement your changes
 
-This project is a monorepo. The code for the `readest-app` is in the `apps/readest-app` directory. Here are some useful scripts for developing the frontend only without compiling Tauri:
+This project is a monorepo. The main application code is currently in the `apps/readest-app` directory. Here are some useful scripts for developing the frontend without compiling Tauri:
 
 | Command          | Description                                        |
 | ---------------- | -------------------------------------------------- |
@@ -97,7 +105,7 @@ Check that your code follows the project's style guidelines by running:
 pnpm build
 ```
 
-Please also make a manual, functional test of your changes. When all that's done, it's time to file a pull request to upstream and fill out the title and body appropriately.
+Please also make a manual, functional test of your changes. When all that's done, open a pull request against this repository and describe the scope of the change clearly. If the change is intended for the original Readest project as well, handle that as a separate upstream contribution.
 
 ## Credits
 

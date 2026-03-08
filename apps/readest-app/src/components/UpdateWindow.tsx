@@ -20,8 +20,8 @@ type UpdateConfig = {
 const DEFAULT_UPDATE_CONFIG: Required<UpdateConfig> = {
   remoteConfigUrl: '',
   eyebrow: 'OpenReadest Update',
-  projectHomepage: 'https://github.com/luyishui',
-  releaseNotesUrl: 'https://github.com/luyishui',
+  projectHomepage: 'https://github.com/luyishui/OpenReadest',
+  releaseNotesUrl: 'https://github.com/luyishui/OpenReadest/releases',
   channelLabel: 'GitHub Pages / GitHub Releases',
   summary:
     'OpenReadest 的独立更新源正在接入中。当前阶段先保留独立“检查更新”页面，后续会接上远程版本信息、更新日志和下载分发。',
