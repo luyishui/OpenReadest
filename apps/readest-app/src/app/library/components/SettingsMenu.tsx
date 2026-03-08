@@ -1,33 +1,28 @@
 import clsx from 'clsx';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PiUserCircle, PiUserCircleCheck, PiGear } from 'react-icons/pi';
+import { PiGear } from 'react-icons/pi';
 import { PiSun, PiMoon } from 'react-icons/pi';
 import { TbSunMoon } from 'react-icons/tb';
-import { MdCloudSync } from 'react-icons/md';
+import { MdCloud } from 'react-icons/md';
 
 import { invoke, PermissionState } from '@tauri-apps/api/core';
 import { isTauriAppPlatform, isWebAppPlatform } from '@/services/environment';
 import { DOWNLOAD_READEST_URL } from '@/services/constants';
-import { useAuth } from '@/context/AuthContext';
 import { useEnv } from '@/context/EnvContext';
 import { useThemeStore } from '@/store/themeStore';
-import { useQuotaStats } from '@/hooks/useQuotaStats';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useResponsiveSize } from '@/hooks/useResponsiveSize';
-import { useTransferQueue } from '@/hooks/useTransferQueue';
-import { navigateToLogin, navigateToProfile } from '@/utils/nav';
 import { tauriHandleSetAlwaysOnTop, tauriHandleToggleFullScreen } from '@/utils/window';
-import { optInTelemetry, optOutTelemetry } from '@/utils/telemetry';
 import { setAboutDialogVisible } from '@/components/AboutWindow';
+import { setSponsorDialogVisible } from '@/components/SponsorWindow';
+import { setUpdateDialogVisible } from '@/components/UpdateWindow';
 import { setMigrateDataDirDialogVisible } from '@/app/library/components/MigrateDataWindow';
+import { setWebDavCenterVisible } from '@/app/library/components/WebDavCenterWindow';
 import { requestStoragePermission } from '@/utils/permission';
 import { saveSysSettings } from '@/helpers/settings';
 import { selectDirectory } from '@/utils/bridge';
-import UserAvatar from '@/components/UserAvatar';
 import MenuItem from '@/components/MenuItem';
-import Quota from '@/components/Quota';
 import Menu from '@/components/Menu';
 
 interface SettingsMenuProps {
@@ -41,14 +36,10 @@ interface Permissions {
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
   const _ = useTranslation();
-  const router = useRouter();
+  useRouter();
   const { envConfig, appService } = useEnv();
-  const { user } = useAuth();
-  const { userProfilePlan, quotas } = useQuotaStats(true);
   const { themeMode, setThemeMode } = useThemeStore();
   const { settings, setSettingsDialogOpen } = useSettingsStore();
-  const [isAutoUpload, setIsAutoUpload] = useState(settings.autoUpload);
-  const [isAutoCheckUpdates, setIsAutoCheckUpdates] = useState(settings.autoCheckUpdates);
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(settings.alwaysOnTop);
   const [isAlwaysShowStatusBar, setIsAlwaysShowStatusBar] = useState(settings.alwaysShowStatusBar);
   const [isScreenWakeLock, setIsScreenWakeLock] = useState(settings.screenWakeLock);
@@ -56,37 +47,33 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
   const [isAutoImportBooksOnOpen, setIsAutoImportBooksOnOpen] = useState(
     settings.autoImportBooksOnOpen,
   );
-  const [isTelemetryEnabled, setIsTelemetryEnabled] = useState(settings.telemetryEnabled);
   const [alwaysInForeground, setAlwaysInForeground] = useState(settings.alwaysInForeground);
   const [savedBookCoverForLockScreen, setSavedBookCoverForLockScreen] = useState(
     settings.savedBookCoverForLockScreen || '',
   );
-  const iconSize = useResponsiveSize(16);
 
-  const { stats, hasActiveTransfers, setIsTransferQueueOpen } = useTransferQueue();
-
-  const openTransferQueue = () => {
-    setIsTransferQueueOpen(true);
+  const openWebDavCenter = () => {
+    setWebDavCenterVisible(true);
     setIsDropdownOpen?.(false);
   };
 
-  const showAboutReadest = () => {
+  const showAboutApp = () => {
     setAboutDialogVisible(true);
     setIsDropdownOpen?.(false);
   };
 
-  const downloadReadest = () => {
+  const showSponsorApp = () => {
+    setSponsorDialogVisible(true);
+    setIsDropdownOpen?.(false);
+  };
+
+  const showUpdateWindow = () => {
+    setUpdateDialogVisible(true);
+    setIsDropdownOpen?.(false);
+  };
+
+  const downloadApp = () => {
     window.open(DOWNLOAD_READEST_URL, '_blank');
-    setIsDropdownOpen?.(false);
-  };
-
-  const handleUserLogin = () => {
-    navigateToLogin(router);
-    setIsDropdownOpen?.(false);
-  };
-
-  const handleUserProfile = () => {
-    navigateToProfile(router);
     setIsDropdownOpen?.(false);
   };
 
@@ -124,26 +111,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
     setIsAlwaysShowStatusBar(newValue);
   };
 
-  const toggleAutoUploadBooks = () => {
-    const newValue = !settings.autoUpload;
-    saveSysSettings(envConfig, 'autoUpload', newValue);
-    setIsAutoUpload(newValue);
-
-    if (newValue && !user) {
-      navigateToLogin(router);
-    }
-  };
-
   const toggleAutoImportBooksOnOpen = () => {
     const newValue = !settings.autoImportBooksOnOpen;
     saveSysSettings(envConfig, 'autoImportBooksOnOpen', newValue);
     setIsAutoImportBooksOnOpen(newValue);
-  };
-
-  const toggleAutoCheckUpdates = () => {
-    const newValue = !settings.autoCheckUpdates;
-    saveSysSettings(envConfig, 'autoCheckUpdates', newValue);
-    setIsAutoCheckUpdates(newValue);
   };
 
   const toggleScreenWakeLock = () => {
@@ -156,22 +127,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
     const newValue = !settings.openLastBooks;
     saveSysSettings(envConfig, 'openLastBooks', newValue);
     setIsOpenLastBooks(newValue);
-  };
-
-  const toggleTelemetry = () => {
-    const newValue = !settings.telemetryEnabled;
-    saveSysSettings(envConfig, 'telemetryEnabled', newValue);
-    setIsTelemetryEnabled(newValue);
-    if (newValue) {
-      optInTelemetry();
-    } else {
-      optOutTelemetry();
-    }
-  };
-
-  const handleUpgrade = () => {
-    navigateToProfile(router);
-    setIsDropdownOpen?.(false);
   };
 
   const handleSetRootDir = () => {
@@ -215,9 +170,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
     setAlwaysInForeground(requestAlwaysInForeground);
   };
 
-  const avatarUrl = user?.user_metadata?.['picture'] || user?.user_metadata?.['avatar_url'];
-  const userFullName = user?.user_metadata?.['full_name'];
-  const userDisplayName = userFullName ? userFullName.split(' ')[0] : null;
   const themeModeLabel =
     themeMode === 'dark'
       ? _('Dark Mode')
@@ -237,55 +189,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
       )}
       onCancel={() => setIsDropdownOpen?.(false)}
     >
-      {user ? (
-        <MenuItem
-          label={
-            userDisplayName
-              ? _('Logged in as {{userDisplayName}}', { userDisplayName })
-              : _('Logged in')
-          }
-          labelClass='!max-w-40'
-          aria-label={_('View account details and quota')}
-          Icon={
-            avatarUrl ? (
-              <UserAvatar url={avatarUrl} size={iconSize} DefaultIcon={PiUserCircleCheck} />
-            ) : (
-              PiUserCircleCheck
-            )
-          }
-        >
-          <ul className='flex flex-col'>
-            <button onClick={handleUserProfile} className='w-full'>
-              <Quota quotas={quotas} labelClassName='h-10 pl-3 pr-2' />
-            </button>
-            <MenuItem label={_('Account')} noIcon onClick={handleUserProfile} />
-          </ul>
-        </MenuItem>
-      ) : (
-        <MenuItem label={_('Sign In')} Icon={PiUserCircle} onClick={handleUserLogin}></MenuItem>
-      )}
-      {user && (
-        <MenuItem
-          label={_('Cloud File Transfers')}
-          Icon={MdCloudSync}
-          description={
-            hasActiveTransfers
-              ? _('{{activeCount}} active, {{pendingCount}} pending', {
-                  activeCount: stats.active,
-                  pendingCount: stats.pending,
-                })
-              : stats.failed > 0
-                ? _('{{failedCount}} failed', { failedCount: stats.failed })
-                : ''
-          }
-          onClick={openTransferQueue}
-        />
-      )}
-      <MenuItem
-        label={_('Auto Upload Books to Cloud')}
-        toggled={isAutoUpload}
-        onClick={toggleAutoUploadBooks}
-      />
+      <MenuItem label={_('WebDAV')} Icon={MdCloud} onClick={openWebDavCenter} />
       {isTauriAppPlatform() && !appService?.isMobile && (
         <MenuItem
           label={_('Auto Import on File Open')}
@@ -298,13 +202,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
           label={_('Open Last Book on Start')}
           toggled={isOpenLastBooks}
           onClick={toggleOpenLastBooks}
-        />
-      )}
-      {appService?.hasUpdater && (
-        <MenuItem
-          label={_('Check Updates on Start')}
-          toggled={isAutoCheckUpdates}
-          onClick={toggleAutoCheckUpdates}
         />
       )}
       <hr aria-hidden='true' className='border-base-200 my-1' />
@@ -369,17 +266,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ setIsDropdownOpen }) => {
         </>
       )}
       <hr aria-hidden='true' className='border-base-200 my-1' />
-      {user && userProfilePlan === 'free' && (
-        <MenuItem label={_('Upgrade to Readest Premium')} onClick={handleUpgrade} />
-      )}
-      {isWebAppPlatform() && <MenuItem label={_('Download Readest')} onClick={downloadReadest} />}
-      <MenuItem label={_('About Readest')} onClick={showAboutReadest} />
-      <MenuItem
-        label={_('Help improve Readest')}
-        description={isTelemetryEnabled ? _('Sharing anonymized statistics') : ''}
-        toggled={isTelemetryEnabled}
-        onClick={toggleTelemetry}
-      />
+      <MenuItem label={_('赞助一下')} onClick={showSponsorApp} />
+      <MenuItem label={_('检查更新')} onClick={showUpdateWindow} />
+      {isWebAppPlatform() && <MenuItem label={_('Download OpenReadest')} onClick={downloadApp} />}
+      <MenuItem label={_('About OpenReadest')} onClick={showAboutApp} />
     </Menu>
   );
 };

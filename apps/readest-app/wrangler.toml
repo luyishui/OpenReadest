@@ -1,11 +1,11 @@
-name = "readest-web"
+name = "openreadest-web"
 main = ".open-next/worker.js"
 compatibility_date = "2025-11-17"
 compatibility_flags = ["nodejs_compat"]
 
 [observability]
-enabled = true
-head_sampling_rate = 0.01
+enabled = false
+head_sampling_rate = 0
 
 [assets]
 directory = ".open-next/assets"
@@ -17,4 +17,4 @@ id = "${TRANSLATIONS_KV_ID}"
 
 [[r2_buckets]]
 binding = "NEXT_INC_CACHE_R2_BUCKET"
-bucket_name = "readest-next-inc-cache"
+bucket_name = "openreadest-next-inc-cache"

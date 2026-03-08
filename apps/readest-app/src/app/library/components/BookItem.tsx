@@ -1,19 +1,14 @@
 import clsx from 'clsx';
 import { MdCheckCircle, MdCheckCircleOutline } from 'react-icons/md';
 import {
-  LiaCloudUploadAltSolid,
-  LiaCloudDownloadAltSolid,
   LiaInfoCircleSolid,
 } from 'react-icons/lia';
 
 import { Book } from '@/types/book';
 import { useEnv } from '@/context/EnvContext';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { LibraryCoverFitType, LibraryViewModeType } from '@/types/settings';
-import { navigateToLogin } from '@/utils/nav';
 import { formatAuthors, formatDescription } from '@/utils/book';
 import ReadingProgress from './ReadingProgress';
 import BookCover from '@/components/BookCover';
@@ -41,9 +36,9 @@ const BookItem: React.FC<BookItemProps> = ({
   handleBookDownload,
   showBookDetailsModal,
 }) => {
+  void handleBookUpload;
+  void handleBookDownload;
   const _ = useTranslation();
-  const router = useRouter();
-  const { user } = useAuth();
   const { appService } = useEnv();
   const iconSize15 = useResponsiveSize(15);
 
@@ -152,30 +147,7 @@ const BookItem: React.FC<BookItemProps> = ({
                   role='progressbar'
                 ></div>
               )
-            ) : (
-              (!book.uploadedAt || (book.uploadedAt && !book.downloadedAt)) && (
-                <button
-                  className='show-cloud-button -m-2 p-2'
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => {
-                    if (!user) {
-                      navigateToLogin(router);
-                      return;
-                    }
-                    if (!book.uploadedAt) {
-                      handleBookUpload(book);
-                    } else if (!book.downloadedAt) {
-                      handleBookDownload(book, { queued: true });
-                    }
-                  }}
-                >
-                  {!book.uploadedAt && <LiaCloudUploadAltSolid size={iconSize15} />}
-                  {book.uploadedAt && !book.downloadedAt && (
-                    <LiaCloudDownloadAltSolid size={iconSize15} />
-                  )}
-                </button>
-              )
-            )}
+            ) : null}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { OsPlatform } from '@/types/system';
 import { md5 } from 'js-md5';
+import { getCachedSystemUILanguage, normalizeUILanguage } from './lang';
 
 export const uniqueId = () => Math.random().toString(36).substring(2, 9);
 
@@ -32,7 +33,12 @@ export const makeSafeFilename = (filename: string, replacement = '_') => {
 };
 
 export const getLocale = () => {
-  return localStorage?.getItem('i18nextLng') || navigator?.language || '';
+  return normalizeUILanguage(
+    localStorage?.getItem('i18nextLng') ||
+      getCachedSystemUILanguage() ||
+      navigator?.language ||
+      'en',
+  );
 };
 
 export const getUserLang = () => {
@@ -49,8 +55,8 @@ export const getTargetLang = () => {
 };
 
 export const isCJKEnv = () => {
-  const browserLanguage = navigator.language || '';
-  const uiLanguage = localStorage?.getItem('i18nextLng') || '';
+  const browserLanguage = getCachedSystemUILanguage() || navigator.language || '';
+  const uiLanguage = localStorage?.getItem('i18nextLng') || browserLanguage;
   const isCJKUI = ['zh', 'ja', 'ko'].some((lang) => uiLanguage.startsWith(lang));
   const isCJKLocale = ['zh', 'ja', 'ko'].some((lang) => browserLanguage.startsWith(lang));
   return isCJKLocale || isCJKUI;

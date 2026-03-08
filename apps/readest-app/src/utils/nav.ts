@@ -1,3 +1,4 @@
+// Copyright (c) 2026 luyishui
 import { useRouter, redirect } from 'next/navigation';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -16,7 +17,7 @@ const createReaderWindow = (appService: AppService, url: string) => {
     height: 600,
     center: true,
     resizable: true,
-    title: appService.isMacOSApp ? '' : 'Readest',
+    title: appService.isMacOSApp ? '' : 'OpenReadest',
     decorations: appService.isMacOSApp ? true : false,
     transparent: appService.isMacOSApp ? false : true,
     shadow: appService.isMacOSApp ? undefined : true,
@@ -66,10 +67,7 @@ export const navigateToReader = (
 };
 
 export const navigateToLogin = (router: ReturnType<typeof useRouter>) => {
-  const pathname = window.location.pathname;
-  const search = window.location.search;
-  const currentPath = pathname !== '/auth' ? pathname + search : '/';
-  router.push(`/auth?redirect=${encodeURIComponent(currentPath)}`);
+  router.push('/library');
 };
 
 export const navigateToProfile = (router: ReturnType<typeof useRouter>) => {
@@ -96,15 +94,9 @@ export const redirectToLibrary = () => {
 };
 
 export const navigateToResetPassword = (router: ReturnType<typeof useRouter>) => {
-  const pathname = window.location.pathname;
-  const search = window.location.search;
-  const currentPath = pathname !== '/auth' ? pathname + search : '/';
-  router.push(`/auth/recovery?redirect=${encodeURIComponent(currentPath)}`);
+  router.push('/library');
 };
 
 export const navigateToUpdatePassword = (router: ReturnType<typeof useRouter>) => {
-  const pathname = window.location.pathname;
-  const search = window.location.search;
-  const currentPath = pathname !== '/auth' ? pathname + search : '/';
-  router.push(`/auth/update?redirect=${encodeURIComponent(currentPath)}`);
+  router.push('/library');
 };

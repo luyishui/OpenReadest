@@ -28,6 +28,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+/.security_keys/
 
 # vercel
 .vercel
@@ -38,6 +39,7 @@ next-env.d.ts
 
 # Rust build
 target
+/release
 
 fastlane/report.xml
 
@@ -45,3 +47,9 @@ fastlane/report.xml
 
 # nix
 result*
+
+# local private assets
+/jideshagnchu/
+/docs/*.md
+/apps/readest-app/public/support/sponsor-poster.jpg
+/.vscode/tasks.json

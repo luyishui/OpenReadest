@@ -26,10 +26,10 @@ dunce = "1"
 url = "2"
 
 [workspace.package]
-authors = ["Bilingify LLC"]
-homepage = "https://readest.com"
+authors = ["luyishui"]
+homepage = "https://github.com/luyishui/openreadest"
 license = "AGPL-3.0"
-repository = "https://github.com/readest/readest"
+repository = "https://github.com/luyishui/openreadest"
 categories = []
 edition = "2021"
 rust-version = "1.77.2"
@@ -40,3 +40,9 @@ tauri-utils = { path = "packages/tauri/crates/tauri-utils" }
 tauri-build = { path = "packages/tauri/crates/tauri-build" }
 tauri-plugin-deep-link = { path = "packages/tauri-plugins/plugins/deep-link" }
 tauri-plugin-single-instance = { path = "packages/tauri-plugins/plugins/single-instance" }
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "s"
+codegen-units = 1

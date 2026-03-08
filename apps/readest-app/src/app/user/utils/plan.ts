@@ -130,7 +130,7 @@ export const getPlanDetails = (
           {
             label: _('AI Translations'),
             description: _(
-              'Translate any text instantly with the power of Google, Azure, or DeepL—understand content in any language.',
+              'Translate any text instantly with the available online translation services and understand content in any language.',
             ),
           },
           {
@@ -173,9 +173,9 @@ export const getPlanDetails = (
             ),
           },
           {
-            label: _('DeepL Pro Access'),
+            label: _('Expanded Translation Access'),
             description: _(
-              'Translate up to 100,000 characters daily with the most accurate translation engine available.',
+              'Translate up to 100,000 characters daily with higher limits and more flexible translation options.',
             ),
           },
           {
@@ -224,9 +224,9 @@ export const getPlanDetails = (
             ),
           },
           {
-            label: _('DeepL Pro Access'),
+            label: _('Expanded Translation Access'),
             description: _(
-              'Translate up to 500,000 characters daily with the most accurate translation engine available.',
+              'Translate up to 500,000 characters daily with the highest limits available in this plan tier.',
             ),
           },
           {

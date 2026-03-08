@@ -1,11 +1,11 @@
 {
-  "name": "@readest/monorepo",
+  "name": "@openreadest/monorepo",
   "private": true,
-  "repository": "readest/readest",
+  "repository": "luyishui/openreadest",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tauri": "pnpm --filter @readest/readest-app tauri",
-    "dev-web": "pnpm --filter @readest/readest-app dev-web",
+    "tauri": "pnpm --filter @openreadest/app tauri",
+    "dev-web": "pnpm --filter @openreadest/app dev-web",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,json,md,html,yml}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css,json,md,html,yml}\""
   },

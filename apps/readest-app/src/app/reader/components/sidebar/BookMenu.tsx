@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { MdCheck } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import { useEnv } from '@/context/EnvContext';
-import { useAuth } from '@/context/AuthContext';
 import { useReaderStore } from '@/store/readerStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useSidebarStore } from '@/store/sidebarStore';
@@ -16,11 +15,11 @@ import { isWebAppPlatform } from '@/services/environment';
 import { eventDispatcher } from '@/utils/event';
 import { FIXED_LAYOUT_FORMATS } from '@/types/book';
 import { DOWNLOAD_READEST_URL } from '@/services/constants';
-import { navigateToLogin } from '@/utils/nav';
-import { saveSysSettings } from '@/helpers/settings';
 import { setKOSyncSettingsWindowVisible } from '@/app/reader/components/KOSyncSettings';
 import { setProofreadRulesVisibility } from '@/app/reader/components/ProofreadRules';
 import { setAboutDialogVisible } from '@/components/AboutWindow';
+import { setSponsorDialogVisible } from '@/components/SponsorWindow';
+import { setUpdateDialogVisible } from '@/components/UpdateWindow';
 import useBooksManager from '../../hooks/useBooksManager';
 import MenuItem from '@/components/MenuItem';
 import Menu from '@/components/Menu';
@@ -32,9 +31,8 @@ interface BookMenuProps {
 
 const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen }) => {
   const _ = useTranslation();
-  const router = useRouter();
-  const { envConfig, appService } = useEnv();
-  const { user } = useAuth();
+  useRouter();
+  const { envConfig } = useEnv();
   const { settings } = useSettingsStore();
   const { bookKeys, recreateViewer, getViewSettings, setViewSettings } = useReaderStore();
   const { getVisibleLibrary } = useLibraryStore();
@@ -55,6 +53,14 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
   };
   const showAboutReadest = () => {
     setAboutDialogVisible(true);
+    setIsDropdownOpen?.(false);
+  };
+  const showSponsorWindow = () => {
+    setSponsorDialogVisible(true);
+    setIsDropdownOpen?.(false);
+  };
+  const showUpdateWindow = () => {
+    setUpdateDialogVisible(true);
     setIsDropdownOpen?.(false);
   };
   const downloadReadest = () => {
@@ -98,14 +104,6 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
   const handlePushKOSync = () => {
     eventDispatcher.dispatch('push-kosync', { bookKey: sideBarBookKey });
     setIsDropdownOpen?.(false);
-  };
-  const toggleDiscordPresence = () => {
-    const discordRichPresenceEnabled = !settings.discordRichPresenceEnabled;
-    saveSysSettings(envConfig, 'discordRichPresenceEnabled', discordRichPresenceEnabled);
-    setIsDropdownOpen?.(false);
-    if (discordRichPresenceEnabled && !user) {
-      navigateToLogin(router);
-    }
   };
 
   return (
@@ -167,17 +165,6 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
           <MenuItem label={_('Pull Progress')} onClick={handlePullKOSync} />
         </>
       )}
-      {appService?.isDesktopApp && (
-        <>
-          <hr className='border-base-200 my-1' />
-          <MenuItem
-            label={_('Show on Discord')}
-            tooltip={_("Display what I'm reading on Discord")}
-            toggled={settings.discordRichPresenceEnabled}
-            onClick={toggleDiscordPresence}
-          />
-        </>
-      )}
       <hr className='border-base-200 my-1' />
       <MenuItem label={_('Proofread')} onClick={showProofreadRulesWindow} />
       <hr className='border-base-200 my-1' />
@@ -189,8 +176,10 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
       />
       <MenuItem label={_('Reload Page')} shortcut='Shift+R' onClick={handleReloadPage} />
       <hr className='border-base-200 my-1' />
-      {isWebAppPlatform() && <MenuItem label={_('Download Readest')} onClick={downloadReadest} />}
-      <MenuItem label={_('About Readest')} onClick={showAboutReadest} />
+      <MenuItem label={_('赞助一下')} onClick={showSponsorWindow} />
+      <MenuItem label={_('检查更新')} onClick={showUpdateWindow} />
+      {isWebAppPlatform() && <MenuItem label={_('Download OpenReadest')} onClick={downloadReadest} />}
+      <MenuItem label={_('About OpenReadest')} onClick={showAboutReadest} />
     </Menu>
   );
 };

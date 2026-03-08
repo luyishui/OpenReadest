@@ -1,9 +1,9 @@
-; Readest NSIS Installer Hooks
+; OpenReadest NSIS Installer Hooks
 ; Registers/unregisters the thumbnail provider DLL for Windows Explorer thumbnails
 
 !include "LogicLib.nsh"
 
-; CLSID for Readest Thumbnail Provider
+; CLSID for OpenReadest Thumbnail Provider
 !define CLSID_READEST_THUMBNAIL "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 
 ; IThumbnailProvider Shell Extension Handler GUID  
@@ -13,14 +13,14 @@
 ; NSIS_HOOK_POSTINSTALL - Called after files are installed
 ;------------------------------------------------------------------------------
 !macro NSIS_HOOK_POSTINSTALL
-    DetailPrint "Registering Readest Thumbnail Provider..."
+    DetailPrint "Registering OpenReadest Thumbnail Provider..."
     
     ; Always do manual registration for reliability
     ; regsvr32 may fail silently if DLL can't find dependencies
     
     ; Register CLSID with full DLL path
-    WriteRegStr HKCR "CLSID\${CLSID_READEST_THUMBNAIL}" "" "Readest Thumbnail Provider"
-    WriteRegStr HKCR "CLSID\${CLSID_READEST_THUMBNAIL}\InprocServer32" "" "$INSTDIR\readest_thumbnail.dll"
+    WriteRegStr HKCR "CLSID\${CLSID_READEST_THUMBNAIL}" "" "OpenReadest Thumbnail Provider"
+    WriteRegStr HKCR "CLSID\${CLSID_READEST_THUMBNAIL}\InprocServer32" "" "$INSTDIR\openreadest_thumbnail.dll"
     WriteRegStr HKCR "CLSID\${CLSID_READEST_THUMBNAIL}\InprocServer32" "ThreadingModel" "Apartment"
     
     ; CRITICAL: Disable process isolation - required because we use IInitializeWithItem, not IInitializeWithStream
@@ -54,14 +54,18 @@
     
     DetailPrint "Thumbnail provider registered successfully."
 
+    Delete "$DESKTOP\OpenReadest.lnk"
+    Delete "$SMPROGRAMS\OpenReadest\OpenReadest.lnk"
+    RMDir "$SMPROGRAMS\OpenReadest"
+
     Delete "$DESKTOP\Readest.lnk"
     Delete "$SMPROGRAMS\Readest\Readest.lnk"
     RMDir "$SMPROGRAMS\Readest"
 
     ; Create new shortcuts pointing to current installation
-    CreateShortcut "$DESKTOP\Readest.lnk" "$INSTDIR\Readest.exe"
-    CreateDirectory "$SMPROGRAMS\Readest"
-    CreateShortcut "$SMPROGRAMS\Readest\Readest.lnk" "$INSTDIR\Readest.exe"
+    CreateShortcut "$DESKTOP\OpenReadest.lnk" "$INSTDIR\openreadest.exe"
+    CreateDirectory "$SMPROGRAMS\OpenReadest"
+    CreateShortcut "$SMPROGRAMS\OpenReadest\OpenReadest.lnk" "$INSTDIR\openreadest.exe"
     
     DetailPrint "Shortcuts updated."
 
@@ -73,7 +77,7 @@
 ; NSIS_HOOK_PREUNINSTALL - Called before files are removed
 ;------------------------------------------------------------------------------
 !macro NSIS_HOOK_PREUNINSTALL
-    DetailPrint "Unregistering Readest Thumbnail Provider..."
+    DetailPrint "Unregistering OpenReadest Thumbnail Provider..."
     
     ; Remove CLSID
     DeleteRegKey HKCR "CLSID\${CLSID_READEST_THUMBNAIL}"
@@ -89,7 +93,7 @@
     DeleteRegKey HKCR ".cbr\ShellEx\${SHELL_THUMBNAIL_HANDLER}"
     
     ; Delete the DLL file
-    Delete "$INSTDIR\readest_thumbnail.dll"
+    Delete "$INSTDIR\openreadest_thumbnail.dll"
     
     ; Refresh shell
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'

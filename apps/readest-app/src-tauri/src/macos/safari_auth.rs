@@ -189,7 +189,7 @@ pub async fn auth_with_safari<R: Runtime>(
 
     let completion_block = completion_block.copy();
 
-    let callback_scheme = NSString::from_str("readest");
+    let callback_scheme = NSString::from_str("openreadest");
     let auth_session_ptr: *mut Object = unsafe {
         let alloc: *mut Object = msg_send![auth_session_class, alloc];
         if alloc.is_null() {

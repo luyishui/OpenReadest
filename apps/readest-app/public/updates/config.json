@@ -1,0 +1,9 @@
+{
+  "remoteConfigUrl": "",
+  "eyebrow": "OpenReadest Update",
+  "projectHomepage": "https://github.com/luyishui",
+  "releaseNotesUrl": "https://github.com/luyishui",
+  "channelLabel": "GitHub Pages / GitHub Releases",
+  "summary": "OpenReadest 的独立更新源正在接入中。当前阶段先保留独立“检查更新”页面，后续会接上远程版本信息、更新日志和下载分发。",
+  "detail": "现在你可以先通过项目主页查看最新进展；Android 包会继续按 ARM64 和 x86 分开提供测试包。"
+}

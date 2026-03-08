@@ -66,7 +66,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   const [showAnnotPopup, setShowAnnotPopup] = useState(false);
   const [showWiktionaryPopup, setShowWiktionaryPopup] = useState(false);
   const [showWikipediaPopup, setShowWikipediaPopup] = useState(false);
-  const [showDeepLPopup, setShowDeepLPopup] = useState(false);
+  const [showTranslatorPopup, setShowTranslatorPopup] = useState(false);
   const [showProofreadPopup, setShowProofreadPopup] = useState(false);
   const [trianglePosition, setTrianglePosition] = useState<Position>();
   const [annotPopupPosition, setAnnotPopupPosition] = useState<Position>();
@@ -94,7 +94,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     showAnnotPopup ||
     showWiktionaryPopup ||
     showWikipediaPopup ||
-    showDeepLPopup ||
+    showTranslatorPopup ||
     showProofreadPopup;
 
   const popupPadding = useResponsiveSize(10);
@@ -195,7 +195,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       setShowAnnotPopup(false);
       setShowWiktionaryPopup(false);
       setShowWikipediaPopup(false);
-      setShowDeepLPopup(false);
+      setShowTranslatorPopup(false);
       setShowProofreadPopup(false);
       setEditingAnnotation(null);
     }, 500),
@@ -280,7 +280,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
               setSelection({ key: bookKey, text, range, index, cfi: view?.getCFI(index, range) });
               // Show translation popup preferentially for PDF right-click
               setShowAnnotPopup(false);
-              setShowDeepLPopup(true);
+              setShowTranslatorPopup(true);
               setShowWiktionaryPopup(false);
               setShowWikipediaPopup(false);
             }
@@ -542,7 +542,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       containerRef.current?.focus();
     }
     setShowAnnotPopup(true);
-    setShowDeepLPopup(false);
+    setShowTranslatorPopup(false);
     setShowWiktionaryPopup(false);
     setShowWikipediaPopup(false);
   };
@@ -683,7 +683,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   const handleTranslation = () => {
     if (!selection || !selection.text) return;
     setShowAnnotPopup(false);
-    setShowDeepLPopup(true);
+    setShowTranslatorPopup(true);
   };
 
   const handleSpeakText = async (oneTime = false) => {
@@ -892,7 +892,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
           onDismiss={handleDismissPopupAndSelection}
         />
       )}
-      {showDeepLPopup && trianglePosition && translatorPopupPosition && (
+      {showTranslatorPopup && trianglePosition && translatorPopupPosition && (
         <TranslatorPopup
           text={selection?.text as string}
           position={translatorPopupPosition}

@@ -16,6 +16,7 @@ fn build_windows_thumbnail() {
         .join("..")
         .join("extensions")
         .join("windows-thumbnail");
+    let dll_target_dir = dll_crate_dir.join("target");
     let dll_crate_manifest = dll_crate_dir.join("Cargo.toml");
     let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".into());
 
@@ -25,6 +26,7 @@ fn build_windows_thumbnail() {
         .arg("windows_thumbnail")
         .arg("--manifest-path")
         .arg(&dll_crate_manifest);
+    cmd.env("CARGO_TARGET_DIR", &dll_target_dir);
 
     if profile == "release" {
         cmd.arg("--release");
@@ -45,7 +47,7 @@ fn build_windows_thumbnail() {
 
     let dll_name = "windows_thumbnail.dll";
     let candidate_paths = [
-        dll_crate_dir.join("target").join(&profile).join(dll_name),
+        dll_target_dir.join(&profile).join(dll_name),
         dll_crate_dir
             .join("target")
             .join(&target_triple)
@@ -58,7 +60,7 @@ fn build_windows_thumbnail() {
         .find(|p| p.exists())
         .expect("Failed to find built windows_thumbnail DLL");
 
-    let dll_dest = &dll_crate_dir.join("target").join(dll_name);
+    let dll_dest = &dll_target_dir.join(dll_name);
 
     fs::copy(dll_src, dll_dest).expect("Failed to copy windows_thumbnail DLL");
     println!("cargo:rerun-if-changed={}", dll_dest.display());

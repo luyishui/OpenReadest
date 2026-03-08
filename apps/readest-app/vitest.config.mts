@@ -7,5 +7,15 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/store/webdavStore.ts', 'src/services/webdav/profileName.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+      },
+    },
   },
 });

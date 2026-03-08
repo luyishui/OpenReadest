@@ -69,7 +69,7 @@ export const DEFAULT_SYSTEM_SETTINGS: Partial<SystemSettings> = {
   openLastBooks: false,
   lastOpenBooks: [],
   autoImportBooksOnOpen: false,
-  telemetryEnabled: true,
+  telemetryEnabled: false,
   discordRichPresenceEnabled: false,
   libraryViewMode: 'grid',
   librarySortBy: 'updated',
@@ -103,7 +103,7 @@ export const DEFAULT_READSETTINGS: ReadSettings = {
   notebookWidth: '25%',
   isNotebookPinned: false,
   autohideCursor: true,
-  translationProvider: 'deepl',
+  translationProvider: 'google',
   translateTargetLang: 'EN',
 
   customThemes: [],
@@ -250,7 +250,7 @@ export const DEFAULT_TTS_CONFIG: TTSConfig = {
 
 export const DEFAULT_TRANSLATOR_CONFIG: TranslatorConfig = {
   translationEnabled: false,
-  translationProvider: 'deepl',
+  translationProvider: 'google',
   translateTargetLang: '',
   showTranslateSource: true,
   ttsReadAloudText: 'both',
@@ -637,20 +637,18 @@ export const CJK_FONTS_PATTENS = new RegExp(
 
 export const BOOK_IDS_SEPARATOR = '+';
 
-export const DOWNLOAD_READEST_URL = 'https://readest.com?utm_source=readest_web';
+export const DOWNLOAD_READEST_URL = '';
 
-export const READEST_WEB_BASE_URL = 'https://web.readest.com';
-export const READEST_NODE_BASE_URL = 'https://node.readest.com';
+export const READEST_WEB_BASE_URL = '';
+export const READEST_NODE_BASE_URL = '';
 
-const LATEST_DOWNLOAD_BASE_URL = 'https://download.readest.com/releases';
+export const READEST_UPDATER_FILE = '';
 
-export const READEST_UPDATER_FILE = `${LATEST_DOWNLOAD_BASE_URL}/latest.json`;
+export const READEST_CHANGELOG_FILE = '';
 
-export const READEST_CHANGELOG_FILE = `${LATEST_DOWNLOAD_BASE_URL}/release-notes.json`;
+export const READEST_PUBLIC_STORAGE_BASE_URL = '';
 
-export const READEST_PUBLIC_STORAGE_BASE_URL = 'https://storage.readest.com';
-
-export const READEST_OPDS_USER_AGENT = 'Readest/1.0 (OPDS Browser)';
+export const READEST_OPDS_USER_AGENT = 'OpenReadest/1.0 (OPDS Browser)';
 
 export const SYNC_PROGRESS_INTERVAL_SEC = 3;
 export const SYNC_NOTES_INTERVAL_SEC = 5;

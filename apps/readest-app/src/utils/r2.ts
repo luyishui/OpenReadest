@@ -1,62 +1,29 @@
-import { AwsClient } from 'aws4fetch';
+const createDisabledStorageError = () =>
+  new Error('OpenReadest has disabled the original cloud object storage services.');
 
 export const r2Storage = {
   getR2Client: () => {
-    return new AwsClient({
-      service: 's3',
-      region: process.env['R2_REGION'] || 'auto',
-      accessKeyId: process.env['R2_ACCESS_KEY_ID']!,
-      secretAccessKey: process.env['R2_SECRET_ACCESS_KEY']!,
-    });
+    throw createDisabledStorageError();
   },
 
   getR2Url: () => {
-    const R2_ACCOUNT_ID = process.env['R2_ACCOUNT_ID']!;
-    return `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    throw createDisabledStorageError();
   },
 
-  getDownloadSignedUrl: async (bucketName: string, fileKey: string, expiresIn: number) => {
-    return (
-      await r2Storage
-        .getR2Client()
-        .sign(
-          new Request(
-            `${r2Storage.getR2Url()}/${bucketName}/${fileKey}?X-Amz-Expires=${expiresIn}`,
-          ),
-          {
-            aws: { signQuery: true },
-          },
-        )
-    ).url.toString();
+  getDownloadSignedUrl: async (_bucketName: string, _fileKey: string, _expiresIn: number) => {
+    throw createDisabledStorageError();
   },
 
   getUploadSignedUrl: async (
-    bucketName: string,
-    fileKey: string,
-    contentLength: number,
-    expiresIn: number,
+    _bucketName: string,
+    _fileKey: string,
+    _contentLength: number,
+    _expiresIn: number,
   ) => {
-    return (
-      await r2Storage.getR2Client().sign(
-        new Request(
-          `${r2Storage.getR2Url()}/${bucketName}/${fileKey}?X-Amz-Expires=${expiresIn}&X-Amz-SignedHeaders=content-length`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Length': contentLength.toString(),
-            },
-          },
-        ),
-        {
-          aws: { signQuery: true },
-        },
-      )
-    ).url.toString();
+    throw createDisabledStorageError();
   },
 
-  deleteObject: async (bucketName: string, fileKey: string) => {
-    return await r2Storage.getR2Client().fetch(`${r2Storage.getR2Url()}/${bucketName}/${fileKey}`, {
-      method: 'DELETE',
-    });
+  deleteObject: async (_bucketName: string, _fileKey: string) => {
+    throw createDisabledStorageError();
   },
 };

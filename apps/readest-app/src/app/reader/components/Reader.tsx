@@ -22,7 +22,8 @@ import { mountAdditionalFonts } from '@/styles/fonts';
 import { isTauriAppPlatform } from '@/services/environment';
 import { getSysFontsList, setSystemUIVisibility } from '@/utils/bridge';
 import { AboutWindow } from '@/components/AboutWindow';
-import { UpdaterWindow } from '@/components/UpdaterWindow';
+import { SponsorWindow } from '@/components/SponsorWindow';
+import { UpdateWindow } from '@/components/UpdateWindow';
 import { KOSyncSettingsWindow } from './KOSyncSettings';
 import { ProofreadRulesManager } from './ProofreadRules';
 import { Toast } from '@/components/Toast';
@@ -167,7 +168,8 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
       <Suspense fallback={<div className='full-height'></div>}>
         <ReaderContent ids={ids} settings={settings} />
         <AboutWindow />
-        <UpdaterWindow />
+        <SponsorWindow />
+        <UpdateWindow />
         <KOSyncSettingsWindow />
         <ProofreadRulesManager />
         <Toast />

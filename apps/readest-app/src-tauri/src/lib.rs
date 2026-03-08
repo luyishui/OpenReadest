@@ -23,8 +23,6 @@ use tauri_plugin_fs::FsExt;
 #[cfg(desktop)]
 use tauri::{Listener, Url};
 mod dir_scanner;
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-mod discord_rpc;
 #[cfg(target_os = "macos")]
 mod macos;
 mod transfer_file;
@@ -171,10 +169,6 @@ pub fn run() {
             macos::apple_auth::start_apple_sign_in,
             #[cfg(target_os = "macos")]
             macos::traffic_light::set_traffic_lights,
-            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-            discord_rpc::update_book_presence,
-            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-            discord_rpc::clear_book_presence,
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_persisted_scope::init())
@@ -204,9 +198,6 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_deep_link::init());
 
     #[cfg(desktop)]
-    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-
-    #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
 
     #[cfg(target_os = "macos")]
@@ -223,13 +214,6 @@ pub fn run() {
 
     builder
         .setup(|#[allow(unused_variables)] app| {
-            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-            {
-                use std::sync::{Arc, Mutex};
-                let discord_client = Arc::new(Mutex::new(discord_rpc::DiscordRpcClient::new()));
-                app.manage(discord_client);
-            }
-
             #[cfg(desktop)]
             {
                 let files = get_files_from_argv(std::env::args().collect());
@@ -261,22 +245,8 @@ pub fn run() {
                 app.listen("window-ready", move |_| {
                     let webview = app_handle.get_webview_window("main").unwrap();
                     webview
-                        .eval("window.__READEST_CLI_ACCESS = true;")
+                        .eval("window.__OPENREADEST_CLI_ACCESS = true;")
                         .expect("Failed to set cli access config");
-
-                    #[cfg(target_os = "linux")]
-                    {
-                        let is_appimage = std::env::var("APPIMAGE").is_ok()
-                            || std::env::current_exe()
-                                .map(|path| path.to_string_lossy().contains("/tmp/.mount_"))
-                                .unwrap_or(false);
-
-                        let script =
-                            format!("window.__READEST_UPDATER_DISABLED = {};", !is_appimage);
-                        webview
-                            .eval(&script)
-                            .expect("Failed to set updater disabled config");
-                    }
                 });
             }
 
@@ -293,7 +263,7 @@ pub fn run() {
             let is_eink = false;
 
             let eink_script = if is_eink {
-                "window.__READEST_IS_EINK = true;"
+                "window.__OPENREADEST_IS_EINK = true;"
             } else {
                 ""
             };
@@ -374,7 +344,7 @@ pub fn run() {
                     .decorations(false)
                     .visible(false)
                     .shadow(true)
-                    .title("Readest");
+                    .title("OpenReadest");
 
                 #[cfg(target_os = "windows")]
                 {

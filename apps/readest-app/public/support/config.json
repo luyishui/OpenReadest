@@ -1,0 +1,11 @@
+{
+  "remoteConfigUrl": "",
+  "eyebrow": "OpenReadest Support",
+  "title": "请作者吃个鸡腿儿",
+  "summary": "OpenReadest 是 Readest 的独立分支，继续维护 EPUB、PDF、TXT 等阅读能力，并补强 WebDAV 同步与本地优先体验。",
+  "detail": "如果这些改动帮你把书库稳定用起来了，可以扫下面这张码支持一下开发、测试设备和持续更新。",
+  "imageUrl": "/support/sponsor-poster.jpg",
+  "fallbackImageUrl": "/icon.png",
+  "projectHomepage": "https://github.com/luyishui",
+  "releaseNotesUrl": "https://github.com/luyishui"
+}

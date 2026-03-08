@@ -19,7 +19,6 @@ import { transferManager } from '@/services/transferManager';
 import { getDirPath, getFilename, joinPaths } from '@/utils/path';
 import { parseOpenWithFiles } from '@/helpers/openWith';
 import { isTauriAppPlatform, isWebAppPlatform } from '@/services/environment';
-import { checkForAppUpdates, checkAppReleaseNotes } from '@/helpers/updater';
 import { impactFeedback } from '@tauri-apps/plugin-haptics';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
@@ -42,7 +41,7 @@ import { useOpenWithBooks } from '@/hooks/useOpenWithBooks';
 import { SelectedFile, useFileSelector } from '@/hooks/useFileSelector';
 import { lockScreenOrientation, selectDirectory } from '@/utils/bridge';
 import { requestStoragePermission } from '@/utils/permission';
-import { SUPPORTED_BOOK_EXTS } from '@/services/constants';
+import { SETTINGS_FILENAME, SUPPORTED_BOOK_EXTS } from '@/services/constants';
 import {
   tauriHandleClose,
   tauriHandleSetAlwaysOnTop,
@@ -52,10 +51,11 @@ import {
 
 import { BookMetadata } from '@/libs/document';
 import { AboutWindow } from '@/components/AboutWindow';
+import { SponsorWindow } from '@/components/SponsorWindow';
+import { UpdateWindow } from '@/components/UpdateWindow';
 import { BookDetailModal } from '@/components/metadata';
-import { UpdaterWindow } from '@/components/UpdaterWindow';
 import { CatalogDialog } from './components/OPDSDialog';
-import { MigrateDataWindow } from './components/MigrateDataWindow';
+import { MigrateDataWindow, setMigrateDataDirDialogVisible } from './components/MigrateDataWindow';
 import { useDragDropImport } from './hooks/useDragDropImport';
 import { useTransferQueue } from '@/hooks/useTransferQueue';
 import { Toast } from '@/components/Toast';
@@ -68,6 +68,10 @@ import DropIndicator from '@/components/DropIndicator';
 import SettingsDialog from '@/components/settings/SettingsDialog';
 import ModalPortal from '@/components/ModalPortal';
 import TransferQueuePanel from './components/TransferQueuePanel';
+import WebDavCenterWindow from './components/WebDavCenterWindow';
+import WebDavAutoSyncRunner from './components/WebDavAutoSyncRunner';
+
+const LEGACY_DATA_PROMPT_SESSION_KEY = 'openreadest:legacy-data-prompted';
 
 const LibraryPageWithSearchParams = () => {
   const searchParams = useSearchParams();
@@ -77,7 +81,7 @@ const LibraryPageWithSearchParams = () => {
 const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchParams | null }) => {
   const router = useRouter();
   const { envConfig, appService } = useEnv();
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const {
     library: libraryBooks,
     isSyncing,
@@ -97,7 +101,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   const { selectFiles } = useFileSelector(appService, _);
   const { safeAreaInsets: insets, isRoundedWindow } = useThemeStore();
   const { clearBookData } = useBookDataStore();
-  const { settings, setSettings, saveSettings } = useSettingsStore();
+  const { settings, setSettings } = useSettingsStore();
   const { isSettingsDialogOpen, setSettingsDialogOpen } = useSettingsStore();
   const { isTransferQueueOpen } = useTransferStore();
   const [showCatalogManager, setShowCatalogManager] = useState(
@@ -164,19 +168,11 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   }, [searchParams]);
 
   useEffect(() => {
-    const doCheckAppUpdates = async () => {
-      if (appService?.hasUpdater && settings.autoCheckUpdates) {
-        await checkForAppUpdates(_);
-      } else if (appService?.hasUpdater === false) {
-        checkAppReleaseNotes();
-      }
-    };
     if (settings.alwaysOnTop) {
       tauriHandleSetAlwaysOnTop(settings.alwaysOnTop);
     }
-    doCheckAppUpdates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appService?.hasUpdater, settings]);
+  }, [settings.alwaysOnTop]);
 
   useEffect(() => {
     if (appService?.isMobileApp) {
@@ -193,6 +189,29 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envConfig, appService]);
 
+  const findLegacyReadestDataDir = useCallback(async () => {
+    if (!appService?.isDesktopApp || settings.customRootDir) {
+      return '';
+    }
+
+    const currentDataDir = await appService.resolveFilePath('', 'Data');
+    const currentRootDir = getDirPath(currentDataDir);
+    const appDataParentDir = getDirPath(currentRootDir);
+    const legacyRootDir = await joinPaths(appDataParentDir, 'Readest');
+    const legacyDataDir = await joinPaths(legacyRootDir, 'Readest');
+
+    if (legacyDataDir === currentDataDir) {
+      return '';
+    }
+
+    const legacyLibraryPath = await joinPaths(legacyDataDir, 'Books', 'library.json');
+    const legacySettingsPath = await joinPaths(legacyDataDir, SETTINGS_FILENAME);
+    const hasLegacyLibrary = await appService.exists(legacyLibraryPath, 'None');
+    const hasLegacySettings = await appService.exists(legacySettingsPath, 'None');
+
+    return hasLegacyLibrary || hasLegacySettings ? legacyDataDir : '';
+  }, [appService, settings.customRootDir]);
+
   useEffect(() => {
     if (appService?.hasWindow) {
       const currentWebview = getCurrentWebview();
@@ -205,6 +224,39 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     }
     return;
   }, [appService, handleRefreshLibrary]);
+
+  useEffect(() => {
+    if (!libraryLoaded || !appService?.isDesktopApp) {
+      return;
+    }
+
+    if (libraryBooks.some((book) => !book.deletedAt) || settings.customRootDir) {
+      return;
+    }
+
+    if (sessionStorage.getItem(LEGACY_DATA_PROMPT_SESSION_KEY) === '1') {
+      return;
+    }
+
+    let cancelled = false;
+    const checkLegacyData = async () => {
+      const legacyDataDir = await findLegacyReadestDataDir();
+      if (!legacyDataDir || cancelled) {
+        return;
+      }
+
+      sessionStorage.setItem(LEGACY_DATA_PROMPT_SESSION_KEY, '1');
+      setMigrateDataDirDialogVisible(true, {
+        mode: 'connect',
+        newDataDir: legacyDataDir,
+      });
+    };
+
+    checkLegacyData();
+    return () => {
+      cancelled = true;
+    };
+  }, [appService, findLegacyReadestDataDir, libraryBooks, libraryLoaded, settings.customRootDir]);
 
   const handleImportBookFiles = useCallback(async (event: CustomEvent) => {
     const selectedFiles: SelectedFile[] = event.detail.files;
@@ -312,20 +364,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     if (isInitiating.current) return;
     isInitiating.current = true;
 
-    const initLogin = async () => {
-      const appService = await envConfig.getAppService();
-      const settings = await appService.loadSettings();
-      if (token && user) {
-        if (!settings.keepLogin) {
-          settings.keepLogin = true;
-          setSettings(settings);
-          saveSettings(envConfig, settings);
-        }
-      } else if (settings.keepLogin) {
-        router.push('/auth');
-      }
-    };
-
     const loadingTimeout = setTimeout(() => setLoading(true), 300);
     const initLibrary = async () => {
       const appService = await envConfig.getAppService();
@@ -359,7 +397,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
       return false;
     };
 
-    initLogin();
     initLibrary();
     return () => {
       setCheckOpenWithBooks(false);
@@ -877,8 +914,11 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           <TransferQueuePanel />
         </ModalPortal>
       )}
+      <WebDavAutoSyncRunner />
+      <WebDavCenterWindow />
       <AboutWindow />
-      <UpdaterWindow />
+      <SponsorWindow />
+      <UpdateWindow />
       <MigrateDataWindow />
       {isSettingsDialogOpen && <SettingsDialog bookKey={''} />}
       {showCatalogManager && <CatalogDialog onClose={handleDismissOPDSDialog} />}

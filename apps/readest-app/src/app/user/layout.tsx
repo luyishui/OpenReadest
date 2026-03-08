@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'User Account',
-  description: 'Manage your account settings and subscription',
+  title: 'Online Features Disabled',
+  description: 'OpenReadest does not include the original cloud account or subscription pages.',
 };
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {

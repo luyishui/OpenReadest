@@ -1,100 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
-    <uses-permission android:name="com.android.vending.BILLING" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
-        android:largeHeap="true"
-        android:enableOnBackInvokedCallback="false"
         android:label="@string/app_name"
-        android:theme="@style/Theme.readest"
-        android:hardwareAccelerated="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.openreadest"
         android:usesCleartextTraffic="${usesCleartextTraffic}">
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:launchMode="singleTask"
             android:label="@string/main_activity_title"
-            android:hardwareAccelerated="true"
             android:name=".MainActivity"
             android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="application/epub+zip" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="application/fb2" />
-                <data android:mimeType="application/x-fb2" />
-                <data android:mimeType="application/mobi"/>
-                <data android:mimeType="application/azw"/>
-                <data android:mimeType="application/azw3"/>
-                <data android:mimeType="application/x-mobipocket-ebook" />
-                <data android:mimeType="application/vnd.amazon.ebook" />
-                <data android:mimeType="application/vnd.amazon.mobi8-ebook" />
-                <data android:mimeType="application/vnd.comicbook+zip" />
-                <data android:mimeType="application/x-cbz" />
-                <data android:mimeType="application/zip" />
-                <data android:mimeType="text/plain" />
-                <data android:mimeType="application/octet-stream"/>
-                <data android:mimeType="application/x-font-ttf"/>
-                <data android:mimeType="application/x-font-otf"/>
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="*/*" />
-                <data android:pathPattern=".*\\.epub" />
-                <data android:pathPattern=".*\\.pdf" />
-                <data android:pathPattern=".*\\.fb2" />
-                <data android:pathPattern=".*\\.fb2.zip" />
-                <data android:pathPattern=".*\\.mobi" />
-                <data android:pathPattern=".*\\.azw" />
-                <data android:pathPattern=".*\\.azw3" />
-                <data android:pathPattern=".*\\.cbz" />
-                <data android:pathPattern=".*\\.zip" />
-                <data android:pathPattern=".*\\.txt" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEND"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="*/*"/>
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="*/*"/>
-            </intent-filter>
-
-            <intent-filter android:label="oauth">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="readest" android:host="auth-callback" />
-            </intent-filter>
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -102,37 +24,9 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <!-- DEEP LINK PLUGIN. AUTO-GENERATED. DO NOT REMOVE. -->
-            <intent-filter android:autoVerify="true" >
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" />
-                <data android:scheme="http" />
-                <data android:host="web.readest.com" />
-                
-                
-                
-                
-            </intent-filter>
+            
             <!-- DEEP LINK PLUGIN. AUTO-GENERATED. DO NOT REMOVE. -->
         </activity>
-
-        <receiver
-            android:name="androidx.media.session.MediaButtonReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
-            </intent-filter>
-        </receiver>
-
-        <service
-          android:name="com.readest.native_tts.MediaPlaybackService"
-          android:foregroundServiceType="mediaPlayback"
-          android:exported="true">
-          <intent-filter>
-            <action android:name="android.media.browse.MediaBrowserService"/>
-          </intent-filter>
-        </service>
 
         <provider
           android:name="androidx.core.content.FileProvider"

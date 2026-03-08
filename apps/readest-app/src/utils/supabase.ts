@@ -1,33 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
+const disabledError = () =>
+  new Error('OpenReadest has disabled the original Supabase-backed account and cloud services.');
 
-const supabaseUrl =
-  process.env['NEXT_PUBLIC_SUPABASE_URL'] ||
-  atob(process.env['NEXT_PUBLIC_DEFAULT_SUPABASE_URL_BASE64']!);
-const supabaseAnonKey =
-  process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ||
-  atob(process.env['NEXT_PUBLIC_DEFAULT_SUPABASE_KEY_BASE64']!);
+type DisabledSupabaseClient = {
+  auth: {
+    getUser: () => Promise<{ data: { user: null }; error: Error | null }>;
+    setSession: () => Promise<{ data: { session: null; user: null }; error: Error }>;
+    admin: {
+      deleteUser: () => Promise<{ data: null; error: Error }>;
+    };
+  };
+  from: (...args: unknown[]) => any;
+  rpc: (...args: unknown[]) => any;
+};
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-export const createSupabaseClient = (accessToken?: string) => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        : {},
+const createDisabledSupabaseClient = (): DisabledSupabaseClient => ({
+  auth: {
+    getUser: async () => ({ data: { user: null }, error: null }),
+    setSession: async () => ({
+      data: { session: null, user: null },
+      error: disabledError(),
+    }),
+    admin: {
+      deleteUser: async () => ({ data: null, error: disabledError() }),
     },
-  });
+  },
+  from: () => {
+    throw disabledError();
+  },
+  rpc: () => {
+    throw disabledError();
+  },
+});
+
+export const supabase = createDisabledSupabaseClient();
+
+export const createSupabaseClient = (_accessToken?: string) => {
+  return createDisabledSupabaseClient();
 };
 
 export const createSupabaseAdminClient = () => {
-  const supabaseAdminKey = process.env['SUPABASE_ADMIN_KEY'] || '';
-  return createClient(supabaseUrl, supabaseAdminKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
+  return createDisabledSupabaseClient();
 };

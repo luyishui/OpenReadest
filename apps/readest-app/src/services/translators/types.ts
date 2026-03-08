@@ -28,7 +28,6 @@ export interface UseTranslatorOptions {
 
 export const ErrorCodes = {
   UNAUTHORIZED: 'Unauthorized',
-  DEEPL_API_ERROR: 'DeepL API Error',
   DAILY_QUOTA_EXCEEDED: 'Daily Quota Exceeded',
   INTERNAL_SERVER_ERROR: 'Internal Server Error',
 };

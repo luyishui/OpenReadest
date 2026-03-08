@@ -1,19 +1,18 @@
 import { AppService } from '@/types/system';
-import { READEST_NODE_BASE_URL, READEST_WEB_BASE_URL } from './constants';
 
 declare global {
   interface Window {
-    __READEST_CLI_ACCESS?: boolean;
+    __OPENREADEST_CLI_ACCESS?: boolean;
   }
 }
 
 export const isTauriAppPlatform = () => process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'tauri';
 export const isWebAppPlatform = () => process.env['NEXT_PUBLIC_APP_PLATFORM'] === 'web';
-export const hasCli = () => window.__READEST_CLI_ACCESS === true;
+export const hasCli = () => window.__OPENREADEST_CLI_ACCESS === true;
 export const isPWA = () => window.matchMedia('(display-mode: standalone)').matches;
-export const getBaseUrl = () => process.env['NEXT_PUBLIC_API_BASE_URL'] ?? READEST_WEB_BASE_URL;
+export const getBaseUrl = () => process.env['NEXT_PUBLIC_API_BASE_URL'] ?? '';
 export const getNodeBaseUrl = () =>
-  process.env['NEXT_PUBLIC_NODE_BASE_URL'] ?? READEST_NODE_BASE_URL;
+  process.env['NEXT_PUBLIC_NODE_BASE_URL'] ?? '';
 
 const isWebDevMode = () => process.env['NODE_ENV'] === 'development' && isWebAppPlatform();
 

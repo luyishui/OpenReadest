@@ -52,8 +52,7 @@ import {
 
 declare global {
   interface Window {
-    __READEST_UPDATER_DISABLED?: boolean;
-    __READEST_IS_EINK?: boolean;
+    __OPENREADEST_IS_EINK?: boolean;
   }
 }
 
@@ -399,7 +398,7 @@ export class NativeAppService extends BaseAppService {
   override isLinuxApp = OS_TYPE === 'linux';
   override isMobileApp = ['android', 'ios'].includes(OS_TYPE);
   override isDesktopApp = ['macos', 'windows', 'linux'].includes(OS_TYPE);
-  override isEink = Boolean(window.__READEST_IS_EINK);
+  override isEink = Boolean(window.__OPENREADEST_IS_EINK);
   override hasTrafficLight = OS_TYPE === 'macos';
   override hasWindow = !(OS_TYPE === 'ios' || OS_TYPE === 'android');
   override hasWindowBar = !(OS_TYPE === 'ios' || OS_TYPE === 'android');
@@ -407,10 +406,7 @@ export class NativeAppService extends BaseAppService {
   override hasRoundedWindow = OS_TYPE === 'linux';
   override hasSafeAreaInset = OS_TYPE === 'ios' || OS_TYPE === 'android';
   override hasHaptics = OS_TYPE === 'ios' || OS_TYPE === 'android';
-  override hasUpdater =
-    OS_TYPE !== 'ios' &&
-    !process.env['NEXT_PUBLIC_DISABLE_UPDATER'] &&
-    !window.__READEST_UPDATER_DISABLED;
+  override hasUpdater = false;
   // orientation lock is not supported on iPad
   override hasOrientationLock =
     (OS_TYPE === 'ios' && getOSPlatform() === 'ios') || OS_TYPE === 'android';

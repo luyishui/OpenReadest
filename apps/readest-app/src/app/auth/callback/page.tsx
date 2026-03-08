@@ -1,42 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { handleAuthCallback } from '@/helpers/auth';
+import Link from 'next/link';
 
-export default function AuthCallback() {
-  const router = useRouter();
-  const { login } = useAuth();
-
-  useEffect(() => {
-    const hash = window.location.hash || '';
-    const params = new URLSearchParams(hash.slice(1));
-
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    const type = params.get('type');
-    const next = params.get('next') ?? '/';
-    const error = params.get('error');
-    const errorDescription = params.get('error_description');
-    const errorCode = params.get('error_code');
-
-    handleAuthCallback({
-      accessToken,
-      refreshToken,
-      type,
-      next,
-      error,
-      errorCode,
-      errorDescription,
-      login,
-      navigate: router.push,
-    });
-  }, [login, router]);
-
+export default function AuthCallbackPage() {
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center'>
-      <span className='loading loading-infinity loading-xl w-20' />
+    <div className='bg-base-200/50 text-base-content hero min-h-screen'>
+      <div className='hero-content text-center'>
+        <div className='max-w-md space-y-4'>
+          <h1 className='text-2xl font-semibold'>Account sign-in has been removed</h1>
+          <p className='text-base-content/80'>
+            OpenReadest no longer connects to online account services. Continue using local
+            libraries, OPDS catalogs, and WebDAV sync instead.
+          </p>
+          <div className='flex justify-center'>
+            <Link href='/library' className='btn btn-primary rounded-xl'>
+              Go to Library
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

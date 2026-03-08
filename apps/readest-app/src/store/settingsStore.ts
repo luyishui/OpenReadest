@@ -2,6 +2,11 @@ import i18n from '@/i18n/i18n';
 import { create } from 'zustand';
 import { SystemSettings } from '@/types/settings';
 import { EnvConfigType } from '@/services/environment';
+import {
+  cacheSystemUILanguage,
+  getCachedSystemUILanguage,
+  normalizeUILanguage,
+} from '@/utils/lang';
 import { initDayjs } from '@/utils/time';
 
 export type FontPanelView = 'main-fonts' | 'custom-fonts';
@@ -19,7 +24,7 @@ interface SettingsState {
   setSettingsGlobal: (global: boolean) => void;
   setFontPanelView: (view: FontPanelView) => void;
 
-  applyUILanguage: (uiLanguage?: string) => void;
+  applyUILanguage: (uiLanguage?: string, systemLanguage?: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -38,8 +43,18 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setSettingsGlobal: (global) => set({ isSettingsGlobal: global }),
   setFontPanelView: (view) => set({ fontPanelView: view }),
 
-  applyUILanguage: (uiLanguage?: string) => {
-    const locale = uiLanguage ? uiLanguage : navigator.language;
+  applyUILanguage: (uiLanguage?: string, systemLanguage?: string) => {
+    const locale = normalizeUILanguage(
+      uiLanguage || systemLanguage || getCachedSystemUILanguage() || navigator.language || 'en',
+    );
+    if (typeof window !== 'undefined') {
+      if (uiLanguage) {
+        localStorage.setItem('i18nextLng', locale);
+      } else {
+        localStorage.removeItem('i18nextLng');
+        cacheSystemUILanguage(systemLanguage || locale);
+      }
+    }
     i18n.changeLanguage(locale);
     initDayjs(locale);
   },

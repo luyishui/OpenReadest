@@ -1,4 +1,4 @@
-import { LocaleWithTextInfo } from '@/types/misc';
+import type { LocaleWithTextInfo } from '../types/misc';
 import { franc } from 'franc-min';
 import { iso6392 } from 'iso-639-2';
 import { iso6393To1 } from 'iso-639-3';
@@ -16,11 +16,55 @@ export const isCJKLang = (lang: string | null | undefined): boolean => {
 const ZH_SCRIPTS_MAPPING: Record<string, string> = {
   zh: 'zh-Hans',
   'zh-cn': 'zh-Hans',
+  'zh-sg': 'zh-Hans',
   'zh-hk': 'zh-Hant',
   'zh-tw': 'zh-Hant',
   'zh-mo': 'zh-Hant',
   'zh-hans': 'zh-Hans',
   'zh-hant': 'zh-Hant',
+};
+
+const SUPPORTED_UI_LANGS = new Set([
+  'en',
+  'de',
+  'ja',
+  'es',
+  'fa',
+  'fr',
+  'it',
+  'el',
+  'ko',
+  'uk',
+  'nl',
+  'sv',
+  'pl',
+  'pt',
+  'ru',
+  'tr',
+  'hi',
+  'id',
+  'vi',
+  'ms',
+  'ar',
+  'th',
+  'bo',
+  'bn',
+  'ta',
+  'si',
+  'zh-CN',
+  'zh-TW',
+]);
+
+export const SYSTEM_UI_LANGUAGE_KEY = 'openreadestSystemLocale';
+
+export const getCachedSystemUILanguage = () => {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(SYSTEM_UI_LANGUAGE_KEY) || '';
+};
+
+export const cacheSystemUILanguage = (lang?: string | null) => {
+  if (typeof window === 'undefined' || !lang) return;
+  localStorage.setItem(SYSTEM_UI_LANGUAGE_KEY, normalizeUILanguage(lang));
 };
 
 export const normalizeToFullLang = (langCode: string): string => {
@@ -49,6 +93,25 @@ export const normalizeToShortLang = (langCode: string): string => {
 export const normalizedLangCode = (lang: string | null | undefined): string => {
   if (!lang) return '';
   return lang.split('-')[0]!.toLowerCase();
+};
+
+export const normalizeUILanguage = (lang?: string | null): string => {
+  if (!lang) return 'en';
+
+  const normalized = normalizeToFullLang(lang);
+  if (normalized === 'zh-Hant') {
+    return 'zh-TW';
+  }
+  if (normalized === 'zh-Hans') {
+    return 'zh-CN';
+  }
+
+  if (SUPPORTED_UI_LANGS.has(normalized)) {
+    return normalized;
+  }
+
+  const shortLang = normalizedLangCode(normalized);
+  return SUPPORTED_UI_LANGS.has(shortLang) ? shortLang : 'en';
 };
 
 export const isSameLang = (lang1?: string | null, lang2?: string | null): boolean => {

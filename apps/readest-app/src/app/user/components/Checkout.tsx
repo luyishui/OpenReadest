@@ -1,9 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import React, { useCallback } from 'react';
-import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
-import { getStripe } from '@/libs/payment/stripe/client';
+import React from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface CheckoutProps {
@@ -18,18 +16,11 @@ const Checkout: React.FC<CheckoutProps> = ({
   clientSecret,
   sessionId,
   planName,
-  onSuccess,
   className = '',
 }) => {
+  void clientSecret;
+  void sessionId;
   const _ = useTranslation();
-  const stripe = getStripe();
-
-  const options = {
-    clientSecret,
-    onComplete: useCallback(() => {
-      onSuccess?.(sessionId);
-    }, [onSuccess, sessionId]),
-  };
 
   return (
     <div className={clsx('w-full', className)}>
@@ -41,10 +32,13 @@ const Checkout: React.FC<CheckoutProps> = ({
         </h3>
       </div>
 
-      <div className='border-base-300 overflow-hidden rounded-lg border'>
-        <EmbeddedCheckoutProvider stripe={stripe} options={options}>
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
+      <div className='border-base-300 rounded-lg border p-6 text-center'>
+        <p className='text-base-content/70'>
+          {_('Subscription and payment flows are disabled in OpenReadest.')}
+        </p>
+        <p className='text-base-content/60 mt-2 text-sm'>
+          {_('No Stripe checkout session will be created from this build.')}
+        </p>
       </div>
     </div>
   );

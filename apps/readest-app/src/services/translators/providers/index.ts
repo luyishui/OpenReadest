@@ -1,5 +1,4 @@
 import { TranslationProvider } from '../types';
-import { deeplProvider } from './deepl';
 import { azureProvider } from './azure';
 import { googleProvider } from './google';
 import { yandexProvider } from './yandex';
@@ -16,13 +15,11 @@ function createTranslator<T extends string>(
   return implementation as TranslationProvider & { name: T };
 }
 
-const deeplTranslator = createTranslator('deepl', deeplProvider);
 const azureTranslator = createTranslator('azure', azureProvider);
 const googleTranslator = createTranslator('google', googleProvider);
 const yandexTranslator = createTranslator('yandex', yandexProvider);
 
 const availableTranslators = [
-  deeplTranslator,
   azureTranslator,
   googleTranslator,
   yandexTranslator,

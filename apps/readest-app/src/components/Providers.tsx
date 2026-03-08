@@ -4,16 +4,18 @@ import '@/utils/polyfill';
 import i18n from '@/i18n/i18n';
 import { useEffect } from 'react';
 import { IconContext } from 'react-icons';
+import { locale as getNativeLocale } from '@tauri-apps/plugin-os';
 import { AuthProvider } from '@/context/AuthContext';
 import { useEnv } from '@/context/EnvContext';
-import { CSPostHogProvider } from '@/context/PHContext';
 import { SyncProvider } from '@/context/SyncContext';
+import { isTauriAppPlatform } from '@/services/environment';
 import { initSystemThemeListener, loadDataTheme } from '@/store/themeStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useSafeAreaInsets } from '@/hooks/useSafeAreaInsets';
 import { useDefaultIconSize } from '@/hooks/useResponsiveSize';
 import { useBackgroundTexture } from '@/hooks/useBackgroundTexture';
 import { useEinkMode } from '@/hooks/useEinkMode';
+import { cacheSystemUILanguage } from '@/utils/lang';
 import { getLocale } from '@/utils/misc';
 import { getDirFromUILanguage } from '@/utils/rtl';
 
@@ -49,9 +51,18 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     loadDataTheme();
     if (appService) {
       initSystemThemeListener(appService);
-      appService.loadSettings().then((settings) => {
+      appService.loadSettings().then(async (settings) => {
+        let systemLanguage = navigator.language || 'en';
+        if (isTauriAppPlatform()) {
+          try {
+            systemLanguage = (await getNativeLocale()) || systemLanguage;
+          } catch {
+            // Fall back to the WebView locale when the native locale API is unavailable.
+          }
+        }
+        cacheSystemUILanguage(systemLanguage);
         const globalViewSettings = settings.globalViewSettings;
-        applyUILanguage(globalViewSettings.uiLanguage);
+        applyUILanguage(globalViewSettings.uiLanguage || undefined, systemLanguage);
         applyBackgroundTexture(envConfig, globalViewSettings);
         if (globalViewSettings.isEink) {
           applyEinkMode(true);
@@ -64,13 +75,11 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   if (!appService) return;
 
   return (
-    <CSPostHogProvider>
-      <AuthProvider>
-        <IconContext.Provider value={{ size: `${iconSize}px` }}>
-          <SyncProvider>{children}</SyncProvider>
-        </IconContext.Provider>
-      </AuthProvider>
-    </CSPostHogProvider>
+    <AuthProvider>
+      <IconContext.Provider value={{ size: `${iconSize}px` }}>
+        <SyncProvider>{children}</SyncProvider>
+      </IconContext.Provider>
+    </AuthProvider>
   );
 };
 

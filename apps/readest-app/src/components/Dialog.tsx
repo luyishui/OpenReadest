@@ -14,6 +14,7 @@ import { Overlay } from './Overlay';
 
 const VELOCITY_THRESHOLD = 0.5;
 const SNAP_THRESHOLD = 0.2;
+const DIALOG_HISTORY_STATE_KEY = '__dialogToken';
 
 interface DialogProps {
   id?: string;
@@ -50,23 +51,78 @@ const Dialog: React.FC<DialogProps> = ({
   const [isRtl] = useState(() => getDirFromUILanguage() === 'rtl');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const historyTokenRef = useRef<string | null>(null);
+  const historyBackRequestedRef = useRef(false);
   const iconSize22 = useResponsiveSize(22);
   const isMobile = window.innerWidth < 640 || window.innerHeight < 640;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const requestClose = () => {
+    const historyToken = historyTokenRef.current;
+    if (historyToken && window.history.state?.[DIALOG_HISTORY_STATE_KEY] === historyToken) {
+      historyBackRequestedRef.current = true;
+      window.history.back();
+      return;
+    }
+    onCloseRef.current();
+  };
 
   const handleKeyDown = (event: KeyboardEvent | CustomEvent) => {
     if (event instanceof CustomEvent) {
       if (event.detail.keyName === 'Back') {
-        onClose();
+        requestClose();
         return true;
       }
     } else {
       if (event.key === 'Escape') {
-        onClose();
+        requestClose();
       }
       event.stopPropagation();
     }
     return false;
   };
+
+  useEffect(() => {
+    if (!isOpen || !isMobile || !id) return;
+
+    const historyToken = `${id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    historyTokenRef.current = historyToken;
+    historyBackRequestedRef.current = false;
+    window.history.pushState(
+      {
+        ...(window.history.state ?? {}),
+        [DIALOG_HISTORY_STATE_KEY]: historyToken,
+      },
+      '',
+    );
+
+    const handlePopState = () => {
+      if (historyTokenRef.current !== historyToken) return;
+      historyTokenRef.current = null;
+      historyBackRequestedRef.current = false;
+      onCloseRef.current();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (historyTokenRef.current === historyToken) {
+        historyTokenRef.current = null;
+        if (historyBackRequestedRef.current) {
+          historyBackRequestedRef.current = false;
+          return;
+        }
+        if (window.history.state?.[DIALOG_HISTORY_STATE_KEY] === historyToken) {
+          window.history.back();
+        }
+      }
+    };
+  }, [id, isMobile, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -143,7 +199,7 @@ const Dialog: React.FC<DialogProps> = ({
       modal.style.transform = 'translateY(100%)';
       overlay.style.transition = `opacity ${transitionDuration}s ease-out`;
       overlay.style.opacity = '0';
-      onClose();
+      requestClose();
       setTimeout(() => {
         modal.style.transform = 'translateY(0%)';
       }, 300);
@@ -195,7 +251,7 @@ const Dialog: React.FC<DialogProps> = ({
           appService?.hasRoundedWindow && 'rounded-window',
           bgClassName,
         )}
-        onDismiss={onClose}
+        onDismiss={requestClose}
       />
       <div
         className={clsx(
@@ -232,7 +288,7 @@ const Dialog: React.FC<DialogProps> = ({
             <div className='flex h-11 w-full items-center justify-between'>
               <button
                 aria-label={_('Close')}
-                onClick={onClose}
+                onClick={requestClose}
                 className={
                   'btn btn-ghost btn-circle flex h-8 min-h-8 w-8 hover:bg-transparent focus:outline-none sm:hidden'
                 }
@@ -248,7 +304,7 @@ const Dialog: React.FC<DialogProps> = ({
               </div>
               <button
                 aria-label={_('Close')}
-                onClick={onClose}
+                onClick={requestClose}
                 className={
                   'bg-base-300/65 btn btn-ghost btn-circle ml-auto hidden h-6 min-h-6 w-6 focus:outline-none sm:flex'
                 }
