@@ -53,3 +53,9 @@ result*
 /docs/*.md
 /apps/readest-app/public/support/sponsor-poster.jpg
 /.vscode/tasks.json
+
+# local working directories (never commit)
+/plan/
+/tmp/
+/.playwright-mcp/
+.gradle/
