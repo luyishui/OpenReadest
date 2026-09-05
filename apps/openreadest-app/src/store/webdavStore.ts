@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { WebDavProfile, WebDavSyncLogItem, WebDavSyncProgress } from '@/services/webdav/models';
+import { WebDavConflictItem, WebDavProfile, WebDavSyncLogItem, WebDavSyncProgress } from '@/services/webdav/models';
 import { getUniqueWebDavProfileName, isValidWebDavProfileName, normalizeWebDavProfileName } from '@/services/webdav/profileName';
 
-type WebDavTab = 'upload' | 'download' | 'logs' | 'profiles';
+type WebDavTab = 'upload' | 'download' | 'logs' | 'profiles' | 'conflicts';
 
 interface WebDavState {
   isWebDavCenterOpen: boolean;
@@ -11,13 +11,20 @@ interface WebDavState {
   profiles: WebDavProfile[];
   activeProfileId: string | null;
 
+  hydrated: boolean;
   isSyncing: boolean;
   isPaused: boolean;
   progress: WebDavSyncProgress | null;
   lastSuccessAt: number | null;
+  lastAutoSyncAttemptAt: number;
   logs: WebDavSyncLogItem[];
   autoSyncEnabled: boolean;
   autoSyncIntervalMinutes: number;
+  /**
+   * 最近一次同步检测到、尚未解决的冲突（Part 4.4）。不持久化：同步状态
+   * 未收敛前，下一轮同步会重新检出这些冲突。
+   */
+  conflicts: WebDavConflictItem[];
 
   setWebDavCenterOpen: (open: boolean) => void;
   setActiveTab: (tab: WebDavTab) => void;
@@ -31,10 +38,14 @@ interface WebDavState {
   setPaused: (paused: boolean) => void;
   setProgress: (progress: WebDavSyncProgress | null) => void;
   setLastSuccessAt: (ts: number | null) => void;
+  setLastAutoSyncAttemptAt: (ts: number) => void;
   addLog: (log: WebDavSyncLogItem) => void;
   clearLogs: () => void;
   setAutoSyncEnabled: (enabled: boolean) => void;
   setAutoSyncIntervalMinutes: (minutes: number) => void;
+  setConflicts: (conflicts: WebDavConflictItem[]) => void;
+  /** 仅移除指定 profile 的冲突：store 可同时持有多个 profile 的同路径条目 */
+  removeConflict: (profileId: string, path: string) => void;
   restore: (data: { profiles?: WebDavProfile[]; activeProfileId?: string | null; logs?: WebDavSyncLogItem[] }) => void;
 }
 
@@ -42,6 +53,7 @@ const PROFILES_KEY = 'readest_webdav_profiles_v1';
 const ACTIVE_PROFILE_KEY = 'readest_webdav_active_profile_v1';
 const LOGS_KEY = 'readest_webdav_logs_v1';
 const AUTO_SYNC_KEY = 'readest_webdav_auto_sync_v1';
+const LAST_SUCCESS_KEY = 'readest_webdav_last_success_v1';
 
 const sanitizeProfiles = (profiles: WebDavProfile[]) => {
   const usedNames: string[] = [];
@@ -72,6 +84,7 @@ const loadFromStorage = (): {
   logs: WebDavSyncLogItem[];
   autoSyncEnabled: boolean;
   autoSyncIntervalMinutes: number;
+  lastSuccessAt: number | null;
 } => {
   try {
     const profiles = sanitizeProfiles(JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]') as WebDavProfile[]);
@@ -87,9 +100,10 @@ const loadFromStorage = (): {
       logs,
       autoSyncEnabled: !!auto.enabled,
       autoSyncIntervalMinutes: auto.intervalMinutes ?? 15,
+      lastSuccessAt: Number(localStorage.getItem(LAST_SUCCESS_KEY)) || null,
     };
   } catch {
-    return { profiles: [], activeProfileId: null, logs: [], autoSyncEnabled: false, autoSyncIntervalMinutes: 15 };
+    return { profiles: [], activeProfileId: null, logs: [], autoSyncEnabled: false, autoSyncIntervalMinutes: 15, lastSuccessAt: null };
   }
 };
 
@@ -112,13 +126,16 @@ export const useWebDavStore = create<WebDavState>((set, get) => ({
   profiles: [],
   activeProfileId: null,
 
+  hydrated: false,
   isSyncing: false,
   isPaused: false,
   progress: null,
   lastSuccessAt: null,
+  lastAutoSyncAttemptAt: 0,
   logs: [],
   autoSyncEnabled: false,
   autoSyncIntervalMinutes: 15,
+  conflicts: [],
 
   setWebDavCenterOpen: (open) => set({ isWebDavCenterOpen: open }),
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -153,7 +170,12 @@ export const useWebDavStore = create<WebDavState>((set, get) => ({
   setSyncing: (syncing) => set({ isSyncing: syncing }),
   setPaused: (paused) => set({ isPaused: paused }),
   setProgress: (progress) => set({ progress }),
-  setLastSuccessAt: (ts) => set({ lastSuccessAt: ts }),
+  setLastSuccessAt: (ts) => {
+    set({ lastSuccessAt: ts });
+    if (ts) localStorage.setItem(LAST_SUCCESS_KEY, String(ts));
+    else localStorage.removeItem(LAST_SUCCESS_KEY);
+  },
+  setLastAutoSyncAttemptAt: (ts) => set({ lastAutoSyncAttemptAt: ts }),
   addLog: (log) => {
     const next = [log, ...get().logs].slice(0, 500);
     set({ logs: next });
@@ -177,14 +199,22 @@ export const useWebDavStore = create<WebDavState>((set, get) => ({
     set({ autoSyncIntervalMinutes: intervalMinutes });
     localStorage.setItem(AUTO_SYNC_KEY, JSON.stringify({ enabled: autoSyncEnabled, intervalMinutes }));
   },
+  setConflicts: (conflicts) => set({ conflicts }),
+  removeConflict: (profileId, path) => {
+    set({
+      conflicts: get().conflicts.filter((c) => !(c.profileId === profileId && c.path === path)),
+    });
+  },
   restore: (data) => {
     const loaded = loadFromStorage();
     set({
+      hydrated: true,
       profiles: data.profiles ? sanitizeProfiles(data.profiles) : loaded.profiles,
       activeProfileId: data.activeProfileId ?? loaded.activeProfileId,
       logs: data.logs ?? loaded.logs,
       autoSyncEnabled: loaded.autoSyncEnabled,
       autoSyncIntervalMinutes: loaded.autoSyncIntervalMinutes,
+      lastSuccessAt: loaded.lastSuccessAt,
     });
   },
 }));

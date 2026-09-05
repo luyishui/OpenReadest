@@ -1,7 +1,20 @@
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { isTauriAppPlatform } from '@/services/environment';
-import { WebDavClientOptions, WebDavDepth, WebDavPropfindResource, WebDavQuota, WebDavResponse } from './types';
-import { basicAuthHeaderValue, joinDavPaths, normalizeRootPath, normalizeServerUrl, normalizeDavPath } from './utils';
+import { tauriDownload, tauriUpload } from '@/utils/transfer';
+import {
+  WebDavClientOptions,
+  WebDavDepth,
+  WebDavPropfindResource,
+  WebDavQuota,
+  WebDavResponse,
+} from './types';
+import {
+  basicAuthHeaderValue,
+  joinDavPaths,
+  normalizeRootPath,
+  normalizeServerUrl,
+  normalizeDavPath,
+} from './utils';
 import { parsePropfindResponse, parseQuotaFromPropfindResponse } from './xml';
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
@@ -74,12 +87,13 @@ export class WebDavClient {
     const headers = this.buildHeaders(options.headers);
 
     const fetchImpl = isTauriAppPlatform() ? (tauriFetch as unknown as typeof fetch) : fetch;
-    const requestInit: RequestInit & { danger?: { acceptInvalidCerts: boolean; acceptInvalidHostnames: boolean } } =
-      {
-        method: options.method,
-        headers,
-        body: options.body ?? null,
-      };
+    const requestInit: RequestInit & {
+      danger?: { acceptInvalidCerts: boolean; acceptInvalidHostnames: boolean };
+    } = {
+      method: options.method,
+      headers,
+      body: options.body ?? null,
+    };
 
     if (isTauriAppPlatform()) {
       requestInit.danger = {
@@ -89,7 +103,10 @@ export class WebDavClient {
     }
 
     try {
-      const response = await withTimeout(fetchImpl(url, requestInit), options.timeoutMs ?? this.defaultTimeoutMs);
+      const response = await withTimeout(
+        fetchImpl(url, requestInit),
+        options.timeoutMs ?? this.defaultTimeoutMs,
+      );
       const text = await response.text();
       return { ok: response.ok, status: response.status, headers: response.headers, data: text };
     } catch (e) {
@@ -115,12 +132,13 @@ export class WebDavClient {
     const headers = this.buildHeaders(options.headers);
 
     const fetchImpl = isTauriAppPlatform() ? (tauriFetch as unknown as typeof fetch) : fetch;
-    const requestInit: RequestInit & { danger?: { acceptInvalidCerts: boolean; acceptInvalidHostnames: boolean } } =
-      {
-        method: options.method,
-        headers,
-        body: options.body ?? null,
-      };
+    const requestInit: RequestInit & {
+      danger?: { acceptInvalidCerts: boolean; acceptInvalidHostnames: boolean };
+    } = {
+      method: options.method,
+      headers,
+      body: options.body ?? null,
+    };
 
     if (isTauriAppPlatform()) {
       requestInit.danger = {
@@ -130,7 +148,10 @@ export class WebDavClient {
     }
 
     try {
-      const response = await withTimeout(fetchImpl(url, requestInit), options.timeoutMs ?? this.defaultTimeoutMs);
+      const response = await withTimeout(
+        fetchImpl(url, requestInit),
+        options.timeoutMs ?? this.defaultTimeoutMs,
+      );
       const data = await response.arrayBuffer();
       return { ok: response.ok, status: response.status, headers: response.headers, data };
     } catch (e) {
@@ -174,7 +195,12 @@ export class WebDavClient {
     });
 
     if (!response.ok || !response.data) {
-      return { ok: false, status: response.status, headers: response.headers, error: response.error || '请求失败' };
+      return {
+        ok: false,
+        status: response.status,
+        headers: response.headers,
+        error: response.error || '请求失败',
+      };
     }
 
     try {
@@ -184,7 +210,12 @@ export class WebDavClient {
       });
       return { ok: true, status: response.status, headers: response.headers, data: resources };
     } catch (e) {
-      return { ok: false, status: response.status, headers: response.headers, error: (e as Error).message };
+      return {
+        ok: false,
+        status: response.status,
+        headers: response.headers,
+        error: (e as Error).message,
+      };
     }
   }
 
@@ -204,28 +235,91 @@ export class WebDavClient {
     });
 
     if (!response.ok || !response.data) {
-      return { ok: false, status: response.status, headers: response.headers, error: response.error || '请求失败' };
+      return {
+        ok: false,
+        status: response.status,
+        headers: response.headers,
+        error: response.error || '请求失败',
+      };
     }
 
     try {
-      return { ok: true, status: response.status, headers: response.headers, data: parseQuotaFromPropfindResponse(response.data) };
+      return {
+        ok: true,
+        status: response.status,
+        headers: response.headers,
+        data: parseQuotaFromPropfindResponse(response.data),
+      };
     } catch (e) {
-      return { ok: false, status: response.status, headers: response.headers, error: (e as Error).message };
+      return {
+        ok: false,
+        status: response.status,
+        headers: response.headers,
+        error: (e as Error).message,
+      };
     }
   }
 
   async mkcol(path: string): Promise<WebDavResponse<void>> {
     const response = await this.requestText(path, { method: 'MKCOL' });
     const ok = response.ok || response.status === 405;
-    return { ok, status: response.status, headers: response.headers, error: ok ? undefined : response.error };
+    return {
+      ok,
+      status: response.status,
+      headers: response.headers,
+      error: ok ? undefined : response.error,
+    };
   }
 
   async delete(path: string): Promise<WebDavResponse<void>> {
     const response = await this.requestText(path, { method: 'DELETE' });
-    return { ok: response.ok, status: response.status, headers: response.headers, error: response.ok ? undefined : response.error };
+    return {
+      ok: response.ok,
+      status: response.status,
+      headers: response.headers,
+      error: response.ok ? undefined : response.error,
+    };
   }
 
-  async get(path: string, options?: { range?: { start: number; end?: number }; ifRange?: string }): Promise<WebDavResponse<ArrayBuffer>> {
+  async getFileToPath(path: string, localFilePath: string): Promise<WebDavResponse<void>> {
+    if (!isTauriAppPlatform()) {
+      return {
+        ok: false,
+        status: 0,
+        headers: new Headers(),
+        error: 'Native file streaming is only available in the desktop or mobile app',
+      };
+    }
+
+    const headers = Object.fromEntries(this.buildHeaders().entries());
+    try {
+      await tauriDownload(
+        this.buildUrl(path),
+        localFilePath,
+        undefined,
+        headers,
+        undefined,
+        // multi-part download silently ignores failed chunks, which would let a
+        // corrupted file be fingerprinted as synced — force the single stream
+        true,
+        this.allowInsecureTls,
+      );
+      return { ok: true, status: 200, headers: new Headers() };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 0,
+        headers: new Headers(),
+        // invoke() rejects with a plain string when the Rust command errors
+        error: typeof e === 'string' ? e : (e as Error).message || '下载失败',
+      };
+    }
+  }
+
+  async get(
+    path: string,
+    options?: { range?: { start: number; end?: number }; ifRange?: string },
+  ): Promise<WebDavResponse<ArrayBuffer>> {
     const headers: Record<string, string> = {};
     if (options?.range) {
       headers['Range'] = `bytes=${options.range.start}-${options.range.end ?? ''}`;
@@ -234,6 +328,44 @@ export class WebDavClient {
       headers['If-Range'] = options.ifRange;
     }
     return this.requestBinary(path, { method: 'GET', headers });
+  }
+
+  async putFileFromPath(
+    path: string,
+    localFilePath: string,
+    options?: { contentType?: string },
+  ): Promise<WebDavResponse<void>> {
+    if (!isTauriAppPlatform()) {
+      return {
+        ok: false,
+        status: 0,
+        headers: new Headers(),
+        error: 'Native file streaming is only available in the desktop or mobile app',
+      };
+    }
+
+    const headers = this.buildHeaders(
+      options?.contentType ? { 'Content-Type': options.contentType } : undefined,
+    );
+    try {
+      await tauriUpload(
+        this.buildUrl(path),
+        localFilePath,
+        'PUT',
+        undefined,
+        Object.fromEntries(headers.entries()),
+        this.allowInsecureTls,
+      );
+      return { ok: true, status: 200, headers: new Headers() };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 0,
+        headers: new Headers(),
+        // invoke() rejects with a plain string when the Rust command errors
+        error: typeof e === 'string' ? e : (e as Error).message || '上传失败',
+      };
+    }
   }
 
   async put(
@@ -246,7 +378,12 @@ export class WebDavClient {
     if (options?.ifMatch) headers['If-Match'] = options.ifMatch;
     if (options?.ifNoneMatch) headers['If-None-Match'] = options.ifNoneMatch;
     const response = await this.requestText(path, { method: 'PUT', headers, body });
-    return { ok: response.ok, status: response.status, headers: response.headers, error: response.ok ? undefined : response.error };
+    return {
+      ok: response.ok,
+      status: response.status,
+      headers: response.headers,
+      error: response.ok ? undefined : response.error,
+    };
   }
 
   async move(
@@ -262,7 +399,12 @@ export class WebDavClient {
         Overwrite: options?.overwrite === false ? 'F' : 'T',
       },
     });
-    return { ok: response.ok, status: response.status, headers: response.headers, error: response.ok ? undefined : response.error };
+    return {
+      ok: response.ok,
+      status: response.status,
+      headers: response.headers,
+      error: response.ok ? undefined : response.error,
+    };
   }
 
   async copy(
@@ -278,6 +420,11 @@ export class WebDavClient {
         Overwrite: options?.overwrite === false ? 'F' : 'T',
       },
     });
-    return { ok: response.ok, status: response.status, headers: response.headers, error: response.ok ? undefined : response.error };
+    return {
+      ok: response.ok,
+      status: response.status,
+      headers: response.headers,
+      error: response.ok ? undefined : response.error,
+    };
   }
 }
