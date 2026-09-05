@@ -10,6 +10,7 @@ import { BookDoc } from '@/libs/document';
 import { debounce } from '@/utils/debounce';
 import { eventDispatcher } from '@/utils/event';
 import { getCFIFromXPointer, normalizeProgressXPointer, XCFI } from '@/utils/xcfi';
+import { getPrimaryContent } from '@/types/view';
 
 type SyncState = 'idle' | 'checking' | 'conflict' | 'synced' | 'error';
 
@@ -67,7 +68,7 @@ export const useKOSync = (bookKey: string) => {
       const cfi = progress.location;
       if (!view || !cfi) return null;
       try {
-        const content = view.renderer.getContents()[0];
+        const content = getPrimaryContent(view.renderer);
         if (content) {
           const { doc, index: spineIndex } = content;
           const converter = new XCFI(doc, spineIndex || 0);
@@ -95,7 +96,7 @@ export const useKOSync = (bookKey: string) => {
     } else {
       if (!remote.progress?.startsWith('/body')) return;
       try {
-        const content = view?.renderer.getContents()[0];
+        const content = view?.renderer ? getPrimaryContent(view.renderer) : undefined;
         const koProgress = normalizeProgressXPointer(remote.progress);
         const cfi = await getCFIFromXPointer(koProgress, content?.doc, content?.index, bookDoc);
         view?.goTo(cfi);

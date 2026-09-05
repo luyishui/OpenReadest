@@ -161,15 +161,19 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
         aria-hidden='true'
         className={clsx(
           'flex items-center justify-between',
-          isVertical ? 'h-full' : 'h-[52px] w-full',
+          isVertical ? 'h-full' : 'h-[52px] w-full gap-x-2',
         )}
       >
         {(progressInfoMode === 'all' || progressInfoMode === 'remaining') && (
           <>
             {viewSettings.showRemainingTime ? (
-              <span className='text-start'>{timeLeft}</span>
+              <span className={clsx('text-start', !isVertical && 'min-w-0 flex-1 truncate')}>
+                {timeLeft}
+              </span>
             ) : viewSettings.showRemainingPages ? (
-              <span className='text-start'>{pageLeft}</span>
+              <span className={clsx('text-start', !isVertical && 'min-w-0 flex-1 truncate')}>
+                {pageLeft}
+              </span>
             ) : null}
           </>
         )}
@@ -177,7 +181,12 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
         {(progressInfoMode === 'all' || progressInfoMode === 'progress') && (
           <>
             {viewSettings.showProgressInfo && (
-              <span className={clsx('text-end', isVertical ? 'mt-auto' : 'ms-auto')}>
+              <span
+                className={clsx(
+                  'text-end',
+                  isVertical ? 'mt-auto' : 'ms-auto min-w-0 flex-1 truncate',
+                )}
+              >
                 {progressInfo}
               </span>
             )}

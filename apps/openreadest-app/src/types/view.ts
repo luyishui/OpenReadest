@@ -21,6 +21,9 @@ export interface FoliateView extends HTMLElement {
   goRight: () => void;
   getCFI: (index: number, range: Range) => string;
   resolveCFI: (cfi: string) => { index: number; anchor: (doc: Document) => Range };
+  resolveNavigation: (
+    cfiOrHrefOrIndex: string | number,
+  ) => { index: number; anchor?: (doc: Document) => Range };
   addAnnotation: (
     note: BookNote & { value?: string },
     remove?: boolean,
@@ -58,6 +61,7 @@ export interface FoliateView extends HTMLElement {
     end: number;
     page: number;
     pages: number;
+    primaryIndex?: number; // index of the primary (current) section view
     containerPosition: number;
     sideProp: 'width' | 'height';
     setAttribute: (name: string, value: string | number) => void;
@@ -66,7 +70,10 @@ export interface FoliateView extends HTMLElement {
     prev: () => Promise<void>;
     nextSection?: () => Promise<void>;
     prevSection?: () => Promise<void>;
-    goTo?: (params: { index: number; anchor: number }) => void;
+    goTo?: (params: {
+      index: number;
+      anchor?: number | ((doc: Document) => Range);
+    }) => Promise<void>;
     setStyles?: (css: string) => void;
     getContents: () => { doc: Document; index?: number; overlayer?: unknown }[];
     scrollToAnchor: (anchor: number | Range) => void;
@@ -91,3 +98,20 @@ export const wrappedFoliateView = (originalView: FoliateView): FoliateView => {
   };
   return originalView;
 };
+
+type RendererContent = ReturnType<FoliateView['renderer']['getContents']>[number];
+
+/**
+ * Resolve the content entry of the current (primary) section view.
+ *
+ * With multi-view preloading (foliate-js upstream), `getContents()` returns
+ * every loaded section (older versions returned only the current one), so
+ * `getContents()[0]` may point at a preloaded adjacent section instead of the
+ * section being read. `renderer.primaryIndex` identifies the primary view;
+ * fall back to the first entry like the upstream foliate-js code.
+ */
+export const getPrimaryContent = (
+  renderer: FoliateView['renderer'],
+): RendererContent | undefined =>
+  renderer.getContents().find((content) => content.index === renderer.primaryIndex) ??
+  renderer.getContents()[0];

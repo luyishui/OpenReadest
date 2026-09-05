@@ -41,7 +41,7 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
   const _ = useTranslation();
   const { appService } = useEnv();
   const { user } = useAuth();
-  const { safeAreaInsets, isDarkMode } = useThemeStore();
+  const { isDarkMode } = useThemeStore();
   const { settings } = useSettingsStore();
   const { getBookData } = useBookDataStore();
   const { hoveredBookKey, getView, getProgress, getViewSettings } = useReaderStore();
@@ -101,7 +101,6 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
       unblockerAudioRef.current.src = '';
       unblockerAudioRef.current.load();
       unblockerAudioRef.current = null;
-      console.log('Unblock audio released');
     } catch (err) {
       console.warn('Error releasing unblock audio:', err);
     }
@@ -323,6 +322,18 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
     [bookKey, getMergedRules, getViewSettings, transformCtx],
   );
 
+  const handleSectionChange = useCallback(
+    async (sectionIndex: number) => {
+      const view = getView(bookKey);
+      const sections = view?.book.sections;
+      if (!sections || sectionIndex < 0 || sectionIndex >= sections.length) return;
+      const resolved = view.resolveNavigation(sectionIndex);
+      // awaited so the controller reads the next section only once it is rendered
+      await view.renderer.goTo?.(resolved);
+    },
+    [bookKey, getView],
+  );
+
   const getTTSHighlightOptions = useCallback(
     (ttsHighlightOptions: TTSHighlightOptions, isEink: boolean) => {
       const einkBgColor = isDarkMode ? '#000000' : '#ffffff';
@@ -397,7 +408,13 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
       if (!oneTime) {
         setShowIndicator(true);
       }
-      const ttsController = new TTSController(appService, view, !!user?.id, preprocessSSMLForTTS);
+      const ttsController = new TTSController(
+        appService,
+        view,
+        !!user?.id,
+        preprocessSSMLForTTS,
+        handleSectionChange,
+      );
       ttsControllerRef.current = ttsController;
       setTtsController(ttsController);
 
@@ -718,7 +735,7 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
           )}
           style={{
             bottom: appService?.hasSafeAreaInset
-              ? `${(safeAreaInsets?.bottom || 0) * 0.33 + (hoveredBookKey ? 70 : 52)}px`
+              ? `calc(env(safe-area-inset-bottom, 0px) * ${appService?.isIOSApp ? 0.33 : 1} + ${hoveredBookKey ? 70 : 52}px)`
               : undefined,
           }}
         >

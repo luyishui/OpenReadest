@@ -53,7 +53,12 @@ export const viewPagination = (
 ) => {
   if (!view || !viewSettings) return;
   const renderer = view.renderer;
-  if (view.book.dir === 'rtl') {
+  // Swap tap/click zones from the resolved view-settings direction instead of
+  // `view.book.dir`: foliate-js (cecaef9) treats vertical-rl as rtl even when
+  // the book's stored dir stays ltr, so auto-detected vertical books would
+  // page backwards relative to their swipe/turn direction otherwise. Mirrors
+  // upstream readest usePagination.
+  if (viewSettings.rtl) {
     side = swapLeftRight(side);
   }
   if (renderer.scrolled) {

@@ -46,7 +46,6 @@ import {
   handleTouchEnd,
 } from '../utils/iframeEventHandlers';
 import { getMaxInlineSize } from '@/utils/config';
-import { getDirFromUILanguage } from '@/utils/rtl';
 import { isTauriAppPlatform } from '@/services/environment';
 import { TransformContext } from '@/services/transformers/types';
 import { transformContent } from '@/services/transformService';
@@ -97,6 +96,10 @@ const FoliateViewer: React.FC<{
   const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const docLoaded = useRef(false);
+  // The multi-view paginator loads (and fires `load` events for) adjacent
+  // sections during preload; resolve the book-level writing direction only
+  // from the first loaded section like the single-view renderer did.
+  const writingModeResolved = useRef(false);
 
   useAutoFocus<HTMLDivElement>({ ref: containerRef });
 
@@ -177,23 +180,28 @@ const FoliateViewer: React.FC<{
     setLoading(false);
     docLoaded.current = true;
     const detail = (event as CustomEvent).detail;
-    console.log('doc index loaded:', detail.index);
     if (detail.doc) {
       const writingDir = viewRef.current?.renderer.setStyles && getDirection(detail.doc);
       const viewSettings = getViewSettings(bookKey)!;
       const bookData = getBookData(bookKey)!;
 
-      const newVertical =
-        writingDir?.vertical || viewSettings.writingMode.includes('vertical') || false;
-      const newRtl =
-        writingDir?.rtl ||
-        getDirFromUILanguage() === 'rtl' ||
-        viewSettings.writingMode.includes('rl') ||
-        false;
-      if (viewSettings.vertical !== newVertical || viewSettings.rtl !== newRtl) {
-        viewSettings.vertical = newVertical;
-        viewSettings.rtl = newRtl;
-        setViewSettings(bookKey, { ...viewSettings });
+      if (!writingModeResolved.current) {
+        writingModeResolved.current = true;
+        const newVertical =
+          writingDir?.vertical || viewSettings.writingMode.includes('vertical') || false;
+        // 书的 RTL 只由书的方向决定（writingMode/bookDoc.dir/渲染器检测）。
+        // 不用 UI 语言驱动：RTL 界面语言（ar/he/fa 等）用户读 LTR 书时
+        // 翻页方向必须跟随书而不是界面（否则点击区反转）。
+        const newRtl =
+          writingDir?.rtl ||
+          bookDoc.dir === 'rtl' ||
+          viewSettings.writingMode.includes('rl') ||
+          false;
+        if (viewSettings.vertical !== newVertical || viewSettings.rtl !== newRtl) {
+          viewSettings.vertical = newVertical;
+          viewSettings.rtl = newRtl;
+          setViewSettings(bookKey, { ...viewSettings });
+        }
       }
 
       if (!bookData?.isFixedLayout) {
@@ -300,7 +308,6 @@ const FoliateViewer: React.FC<{
     setTimeout(() => setLoading(true), 200);
 
     const openBook = async () => {
-      console.log('Opening book', bookKey);
       await import('foliate-js/view.js');
       const view = wrappedFoliateView(document.createElement('foliate-view') as FoliateView);
       view.id = `foliate-view-${bookKey}`;
@@ -342,7 +349,7 @@ const FoliateViewer: React.FC<{
       const width = viewWidth;
       const height = viewHeight;
       book.transformTarget?.addEventListener('data', getDocTransformHandler({ width, height }));
-      view.renderer.setStyles?.(getStyles(viewSettings));
+      view.renderer.setStyles?.(getStyles(viewSettings, undefined, getLoadedFonts()));
       applyTranslationStyle(viewSettings);
 
       doubleClickDisabled.current = viewSettings.disableDoubleClick!;
@@ -428,7 +435,7 @@ const FoliateViewer: React.FC<{
   useEffect(() => {
     if (viewRef.current && viewRef.current.renderer) {
       const viewSettings = getViewSettings(bookKey)!;
-      viewRef.current.renderer.setStyles?.(getStyles(viewSettings));
+      viewRef.current.renderer.setStyles?.(getStyles(viewSettings, undefined, getLoadedFonts()));
       const docs = viewRef.current.renderer.getContents();
       docs.forEach(({ doc }) => {
         if (bookDoc.rendition?.layout === 'pre-paginated') {
@@ -450,11 +457,16 @@ const FoliateViewer: React.FC<{
   useEffect(() => {
     const mountCustomFonts = async () => {
       await loadCustomFonts(envConfig);
-      getLoadedFonts().forEach((font) => {
+      const loadedFonts = getLoadedFonts();
+      loadedFonts.forEach((font) => {
         mountCustomFont(document, font);
         const docs = viewRef.current?.renderer.getContents();
         docs?.forEach(({ doc }) => mountCustomFont(doc, font));
       });
+      const currentViewSettings = getViewSettings(bookKey);
+      if (currentViewSettings) {
+        viewRef.current?.renderer.setStyles?.(getStyles(currentViewSettings, undefined, loadedFonts));
+      }
     };
     if (settings.customFonts) {
       mountCustomFonts();

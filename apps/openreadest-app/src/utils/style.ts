@@ -14,6 +14,7 @@ import {
   generateLightPalette,
   generateDarkPalette,
 } from '@/styles/themes';
+import { createFontCSS, CustomFont } from '@/styles/fonts';
 import { getOSPlatform } from './misc';
 
 const getFontStyles = (
@@ -102,6 +103,19 @@ const getFontStyles = (
     }
     body *:not(pre, code, kbd, .code):not(pre *, code *, kbd *, .code *) {
       ${overrideFont ? 'font-family: revert !important;' : ''}
+    }
+    ${
+      overrideFont
+        ? `/* layered !important outranks the book's unlayered !important font styles */
+    @layer readest-font-override {
+      html, html body {
+        font-family: var(${defaultFontFamily}) !important;
+      }
+      body *:not(pre, code, kbd, .code):not(pre *, code *, kbd *, .code *) {
+        font-family: revert !important;
+      }
+    }`
+        : ''
     }
   `;
   return fontStyles;
@@ -449,8 +463,6 @@ export const getFootnoteStyles = () => `
   }
 
   a:any-link {
-    cursor: default;
-    pointer-events: none;
     text-decoration: none;
     padding: unset;
     margin: unset;
@@ -549,7 +561,11 @@ export const getThemeCode = () => {
   } as ThemeCode;
 };
 
-export const getStyles = (viewSettings: ViewSettings, themeCode?: ThemeCode) => {
+export const getStyles = (
+  viewSettings: ViewSettings,
+  themeCode?: ThemeCode,
+  customFonts: CustomFont[] = [],
+) => {
   if (!themeCode) {
     themeCode = getThemeCode();
   }
@@ -586,6 +602,16 @@ export const getStyles = (viewSettings: ViewSettings, themeCode?: ThemeCode) => 
     viewSettings.fontWeight!,
     viewSettings.overrideFont!,
   );
+  const customFontFaces = customFonts
+    .filter((font) => !!font.blobUrl)
+    .map((font) => {
+      try {
+        return createFontCSS(font);
+      } catch {
+        return '';
+      }
+    })
+    .join('\n');
   const colorStyles = getColorStyles(
     viewSettings.overrideColor!,
     viewSettings.invertImgColorInDark!,
@@ -595,7 +621,7 @@ export const getStyles = (viewSettings: ViewSettings, themeCode?: ThemeCode) => 
   );
   const translationStyles = getTranslationStyles(viewSettings.showTranslateSource!);
   const userStylesheet = viewSettings.userStylesheet!;
-  return `${layoutStyles}\n${fontStyles}\n${colorStyles}\n${translationStyles}\n${userStylesheet}`;
+  return `${layoutStyles}\n${customFontFaces}\n${fontStyles}\n${colorStyles}\n${translationStyles}\n${userStylesheet}`;
 };
 
 export const applyTranslationStyle = (viewSettings: ViewSettings) => {
@@ -715,6 +741,21 @@ export const transformStylesheet = (css: string, vw: number, vh: number, vertica
     return selector + block;
   });
 
+  // unset font-family for body when set to serif or sans-serif
+  css = css.replace(ruleRegex, (_, selector, block) => {
+    if (/\bbody\b/i.test(selector)) {
+      const hasSerifFont = /font-family\s*:\s*serif\s*(?:;|\}|$)/.test(block);
+      const hasSansSerifFont = /font-family\s*:\s*sans-serif\s*(?:;|\}|$)/.test(block);
+      if (hasSerifFont) {
+        block = block.replace(/font-family\s*:\s*serif\s*(;|\}|$)/gi, 'font-family: unset$1');
+      }
+      if (hasSansSerifFont) {
+        block = block.replace(/font-family\s*:\s*sans-serif\s*(;|\}|$)/gi, 'font-family: unset$1');
+      }
+    }
+    return selector + block;
+  });
+
   // replace absolute font sizes with rem units
   // replace vw and vh as they cause problems with layout
   // replace hardcoded colors
@@ -740,7 +781,10 @@ export const transformStylesheet = (css: string, vw: number, vh: number, vertica
     })
     .replace(/(\d*\.?\d+)vw/gi, (_, d) => (parseFloat(d) * vw) / 100 + 'px')
     .replace(/(\d*\.?\d+)vh/gi, (_, d) => (parseFloat(d) * vh) / 100 + 'px')
-    .replace(/([\s;])font-family\s*:\s*monospace/gi, '$1font-family: var(--monospace)')
+    .replace(/(font-family\s*:[^;]*?)\bsans-serif\b/gi, '$1READEST_SS_PLACEHOLDER')
+    .replace(/(font-family\s*:[^;]*?)\bserif\b(?!-)/gi, '$1var(--serif)')
+    .replace(/READEST_SS_PLACEHOLDER/g, 'var(--sans-serif)')
+    .replace(/(font-family\s*:[^;]*?)\bmonospace\b/gi, '$1var(--monospace)')
     .replace(/([\s;])font-weight\s*:\s*normal/gi, '$1font-weight: var(--font-weight)')
     .replace(/([\s;])color\s*:\s*black/gi, '$1color: var(--theme-fg-color)')
     .replace(/([\s;])color\s*:\s*#000000/gi, '$1color: var(--theme-fg-color)')

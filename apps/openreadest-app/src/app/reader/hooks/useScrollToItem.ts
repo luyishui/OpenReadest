@@ -16,7 +16,11 @@ const useScrollToItem = (cfi: string, progress: BookProgress | null) => {
     const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
 
     if (!isVisible) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Eink displays ghost previous frames during smooth JS scroll animations;
+      // force an instant jump. scrollIntoView({ behavior: 'smooth' }) overrides
+      // CSS scroll-behavior, so a CSS-only fix via useEinkMode is impossible.
+      const isEink = document.documentElement.getAttribute('data-eink') === 'true';
+      element.scrollIntoView({ behavior: isEink ? 'auto' : 'smooth', block: 'center' });
     }
 
     element.setAttribute('aria-current', 'page');

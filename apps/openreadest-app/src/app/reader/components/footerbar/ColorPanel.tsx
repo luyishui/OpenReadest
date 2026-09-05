@@ -72,14 +72,22 @@ export const ColorPanel: React.FC<ColorPanelProps> = ({ actionTab, bottomOffset 
   };
 
   const classes = clsx(
-    'footerbar-color-mobile bg-base-200 absolute flex w-full flex-col items-center gap-y-8 px-4 transition-all sm:hidden',
+    'footerbar-color-mobile not-eink:bg-base-200 eink:bg-base-100 absolute flex w-full flex-col items-center gap-y-8 px-4 transition-all sm:hidden',
+    'eink:border-base-content eink:border-t',
     actionTab === 'color'
       ? 'pointer-events-auto translate-y-0 pb-4 pt-8 ease-out'
       : 'pointer-events-none invisible translate-y-full overflow-hidden pb-0 pt-0 ease-in',
   );
 
   return (
-    <div className={classes} style={{ bottom: bottomOffset }}>
+    <div
+      className={classes}
+      style={{
+        bottom: appService?.isAndroidApp
+          ? `calc(env(safe-area-inset-bottom) + 64px)`
+          : bottomOffset,
+      }}
+    >
       {appService?.hasScreenBrightness && (
         <Slider
           label={_('Screen Brightness')}

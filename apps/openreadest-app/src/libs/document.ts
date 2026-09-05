@@ -249,9 +249,34 @@ export class DocumentLoader {
 
 export const getDirection = (doc: Document) => {
   const { defaultView } = doc;
-  const { writingMode, direction } = defaultView!.getComputedStyle(doc.body);
+  // iframe 初始化/销毁窗口期 defaultView 或 doc.body 可能为 null：此时
+  // 无法判定方向，返回默认的横排 LTR 而不是抛 TypeError 白屏。
+  if (!defaultView || !doc.body) return { vertical: false, rtl: false };
+  const bodyStyle = defaultView.getComputedStyle(doc.body);
+  let { writingMode } = bodyStyle;
+  const { direction } = bodyStyle;
+  // Some EPUBs set writing-mode on the first child of body instead of body itself
+  if (!writingMode || writingMode === 'horizontal-tb') {
+    const firstChild = doc.body.querySelector(':scope > :not([cfi-inert])');
+    if (firstChild) {
+      const childStyle = defaultView.getComputedStyle(firstChild);
+      if (childStyle.writingMode === 'vertical-rl' || childStyle.writingMode === 'vertical-lr') {
+        writingMode = childStyle.writingMode;
+      }
+    }
+  }
   const vertical = writingMode === 'vertical-rl' || writingMode === 'vertical-lr';
-  const rtl = doc.body.dir === 'rtl' || direction === 'rtl' || doc.documentElement.dir === 'rtl';
+  // `vertical-rl` (Japanese/Chinese vertical) advances columns right-to-left
+  // even though its computed `direction` stays `ltr`, so the writing mode
+  // itself marks it RTL and page turns follow the horizontal-rtl convention.
+  // Mirrors foliate-js paginator's getDirection (upstream cecaef9) and the
+  // upstream app fix (readest#4865), keeping click-zone paging consistent
+  // with the renderer's swipe direction for vertical books.
+  const rtl =
+    writingMode === 'vertical-rl' ||
+    doc.body.dir === 'rtl' ||
+    direction === 'rtl' ||
+    doc.documentElement.dir === 'rtl';
   return { vertical, rtl };
 };
 

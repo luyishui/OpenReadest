@@ -120,6 +120,7 @@ export interface BookLayout {
   maxBlockSize: number;
   animated: boolean;
   isEink: boolean;
+  isColorEink: boolean;
   writingMode: WritingMode;
   vertical: boolean;
   rtl: boolean;

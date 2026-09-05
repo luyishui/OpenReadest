@@ -1,4 +1,4 @@
-import { FoliateView } from '@/types/view';
+import { FoliateView, getPrimaryContent } from '@/types/view';
 import { AppService } from '@/types/system';
 import { filterSSMLWithLang, parseSSMLMarks } from '@/utils/ssml';
 import { Overlayer } from 'foliate-js/overlayer.js';
@@ -27,6 +27,7 @@ export class TTSController extends EventTarget {
   view: FoliateView;
   isAuthenticated: boolean = false;
   preprocessCallback?: (ssml: string) => Promise<string>;
+  onSectionChange?: (sectionIndex: number) => Promise<void>;
   #nossmlCnt: number = 0;
   #currentSpeakAbortController: AbortController | null = null;
   #currentSpeakPromise: Promise<void> | null = null;
@@ -50,6 +51,7 @@ export class TTSController extends EventTarget {
     view: FoliateView,
     isAuthenticated: boolean = false,
     preprocessCallback?: (ssml: string) => Promise<string>,
+    onSectionChange?: (sectionIndex: number) => Promise<void>,
   ) {
     super();
     this.ttsWebClient = new WebSpeechClient(this);
@@ -63,6 +65,7 @@ export class TTSController extends EventTarget {
     this.view = view;
     this.isAuthenticated = isAuthenticated;
     this.preprocessCallback = preprocessCallback;
+    this.onSectionChange = onSectionChange;
   }
 
   async init() {
@@ -93,7 +96,7 @@ export class TTSController extends EventTarget {
 
   #getHighlighter() {
     return (range: Range) => {
-      const { overlayer } = this.view.renderer.getContents()[0] as { overlayer: Overlayer };
+      const { overlayer } = getPrimaryContent(this.view.renderer) as { overlayer: Overlayer };
       const { style, color } = this.options;
       overlayer?.remove(HIGHLIGHT_KEY);
       overlayer?.add(HIGHLIGHT_KEY, range, Overlayer[style], { color });
@@ -101,7 +104,7 @@ export class TTSController extends EventTarget {
   }
 
   #clearHighlighter() {
-    const { overlayer } = (this.view.renderer.getContents()?.[0] || {}) as { overlayer: Overlayer };
+    const { overlayer } = (getPrimaryContent(this.view.renderer) || {}) as { overlayer: Overlayer };
     overlayer?.remove(HIGHLIGHT_KEY);
   }
 
@@ -123,6 +126,23 @@ export class TTSController extends EventTarget {
       }),
       this.#getHighlighter(),
     );
+  }
+
+  // Navigate the view to the next section so TTS follows its own location
+  // instead of paging forward from wherever the user has scrolled the view.
+  // Navigation is awaited because TTS can only read the rendered document.
+  async #gotoNextSection(): Promise<boolean> {
+    const currentIndex = getPrimaryContent(this.view.renderer)?.index;
+    const sections = this.view.book.sections;
+    if (currentIndex === undefined || !sections) return false;
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= sections.length) return false;
+    if (this.onSectionChange) {
+      await this.onSectionChange(nextIndex);
+    } else {
+      await this.view.renderer.goTo?.({ index: nextIndex });
+    }
+    return true;
   }
 
   async preloadSSML(ssml: string | undefined, signal: AbortSignal) {
@@ -187,8 +207,11 @@ export class TTSController extends EventTarget {
           // FIXME: in case we are at the end of the book, need a better way to handle this
           if (this.#nossmlCnt < 10 && this.state === 'playing' && !oneTime) {
             resolve();
-            await this.view.next();
-            await this.forward();
+            if (await this.#gotoNextSection()) {
+              await this.forward();
+            } else {
+              await this.stop();
+            }
           }
           console.log('no SSML, skipping for', this.#nossmlCnt);
           return;
@@ -405,6 +428,7 @@ export class TTSController extends EventTarget {
   async shutdown() {
     await this.stop();
     this.#clearHighlighter();
+    this.view.tts = null;
     if (this.ttsWebClient.initialized) {
       await this.ttsWebClient.shutdown();
     }

@@ -184,7 +184,8 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
       // book.metaHash = book.metaHash ?? getMetadataHash(bookDoc.metadata);
       book.metaHash = getMetadataHash(bookDoc.metadata);
 
-      const isFixedLayout = FIXED_LAYOUT_FORMATS.has(book.format);
+      const isFixedLayout =
+        bookDoc.rendition?.layout === 'pre-paginated' || FIXED_LAYOUT_FORMATS.has(book.format);
       useBookDataStore.setState((state) => ({
         booksData: {
           ...state.booksData,

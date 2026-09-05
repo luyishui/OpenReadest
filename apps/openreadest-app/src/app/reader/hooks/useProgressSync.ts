@@ -12,6 +12,7 @@ import { debounce } from '@/utils/debounce';
 import { eventDispatcher } from '@/utils/event';
 import { DEFAULT_BOOK_SEARCH_CONFIG, SYNC_PROGRESS_INTERVAL_SEC } from '@/services/constants';
 import { getCFIFromXPointer, getXPointerFromCFI, normalizeProgressXPointer } from '@/utils/xcfi';
+import { getPrimaryContent } from '@/types/view';
 
 export const useProgressSync = (bookKey: string) => {
   const _ = useTranslation();
@@ -55,7 +56,7 @@ export const useProgressSync = (bookKey: string) => {
       const book = getBookData(bookKey)?.book;
       if (config && view && book && config.progress && config.progress[0] > 0) {
         try {
-          const content = view.renderer.getContents()[0];
+          const content = getPrimaryContent(view.renderer);
           if (content && !FIXED_LAYOUT_FORMATS.has(book.format)) {
             const { doc, index } = content;
             const xpointerResult = await getXPointerFromCFI(config.location!, doc, index || 0);
@@ -126,7 +127,7 @@ export const useProgressSync = (bookKey: string) => {
       const bookData = getBookData(bookKey);
       const view = getView(bookKey);
       if (xPointer && view && bookData && bookData.bookDoc) {
-        const content = view.renderer.getContents()[0];
+        const content = getPrimaryContent(view.renderer);
         const koProgress = normalizeProgressXPointer(xPointer);
         const candidateCFI = await getCFIFromXPointer(
           koProgress,

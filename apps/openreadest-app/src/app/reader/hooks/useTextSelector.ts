@@ -166,7 +166,11 @@ export const useTextSelector = (
     const sel = doc.getSelection() as Selection;
     if (isValidSelection(sel)) {
       if (!selectionPosition.current) {
-        selectionPosition.current = view?.renderer?.start || null;
+        // `containerPosition` is the absolute scroll offset of the renderer
+        // container; `start` is relative to the primary (current) section view
+        // and is not a valid value to write back to `containerPosition` in
+        // handleScroll (follows foliate-js multi-view paginator semantics).
+        selectionPosition.current = view?.renderer?.containerPosition || null;
       }
       makeSelection(sel, index, false);
     } else {

@@ -4,6 +4,7 @@ import { RiArrowLeftSLine, RiArrowRightSLine } from 'react-icons/ri';
 import { RiArrowGoBackLine, RiArrowGoForwardLine } from 'react-icons/ri';
 import { RiArrowLeftDoubleLine, RiArrowRightDoubleLine } from 'react-icons/ri';
 import { getNavigationIcon, getNavigationLabel, getNavigationHandler } from './utils';
+import { useEnv } from '@/context/EnvContext';
 import { useReaderStore } from '@/store/readerStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ViewSettings } from '@/types/book';
@@ -29,10 +30,11 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
   progressValid,
   navigationHandlers,
   viewSettings,
-  bottomOffset: mobileBottomOffset,
+  bottomOffset,
   sliderHeight,
 }) => {
   const _ = useTranslation();
+  const { appService } = useEnv();
   const { getView } = useReaderStore();
   const view = getView(bookKey);
 
@@ -56,14 +58,22 @@ export const NavigationPanel: React.FC<NavigationPanelProps> = ({
   );
 
   const classes = clsx(
-    'footerbar-progress-mobile bg-base-200 absolute flex w-full flex-col items-center gap-y-8 px-4 transition-all sm:hidden',
+    'footerbar-progress-mobile not-eink:bg-base-200 eink:bg-base-100 absolute flex w-full flex-col items-center gap-y-8 px-4 transition-all sm:hidden',
+    'eink:border-base-content eink:border-t',
     actionTab === 'progress'
       ? 'pointer-events-auto translate-y-0 pb-4 pt-8 ease-out'
       : 'pointer-events-none invisible translate-y-full overflow-hidden pb-0 pt-0 ease-in',
   );
 
   return (
-    <div className={classes} style={{ bottom: mobileBottomOffset }}>
+    <div
+      className={classes}
+      style={{
+        bottom: appService?.isAndroidApp
+          ? `calc(env(safe-area-inset-bottom) + 64px)`
+          : bottomOffset,
+      }}
+    >
       <div className='flex w-full items-center justify-between gap-x-6'>
         <Slider
           label={_('Reading Progress')}
