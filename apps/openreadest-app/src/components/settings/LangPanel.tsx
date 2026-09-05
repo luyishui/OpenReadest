@@ -13,6 +13,7 @@ import { ConvertChineseVariant } from '@/types/book';
 import { SettingsPanelPanelProp } from './SettingsDialog';
 import { isCJKEnv } from '@/utils/misc';
 import Select from '@/components/Select';
+import LocalDictionaries from './LocalDictionaries';
 
 const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }) => {
   const _ = useTranslation();
@@ -312,6 +313,8 @@ const LangPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset 
           </div>
         </div>
       </div>
+
+      <LocalDictionaries />
 
       {(isCJKEnv() || view?.language.isCJK) && (
         <div className='w-full'>

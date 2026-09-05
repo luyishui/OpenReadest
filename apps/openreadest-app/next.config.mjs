@@ -37,8 +37,9 @@ const nextConfig = {
         'highlight.js',
         'foliate-js',
         'marked',
+        'js-mdict',
       ]
-    : [],
+    : ['js-mdict'],
   async headers() {
     return [
       {

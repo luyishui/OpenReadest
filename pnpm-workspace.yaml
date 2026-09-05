@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/foliate-js
+  - packages/js-mdict
 
 onlyBuiltDependencies:
   - sharp

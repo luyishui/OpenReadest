@@ -3,6 +3,7 @@ import { CustomFont } from '@/styles/fonts';
 import { CustomTexture } from '@/styles/textures';
 import { HighlightColor, HighlightStyle, ViewSettings } from './book';
 import { OPDSCatalog } from './opds';
+import type { ImportedDictionary } from '@/services/dictionaries/types';
 
 export type ThemeType = 'light' | 'dark' | 'auto';
 export type LibraryViewModeType = 'grid' | 'list';
@@ -76,6 +77,7 @@ export interface SystemSettings {
   libraryColumns: number;
   customFonts: CustomFont[];
   customTextures: CustomTexture[];
+  customDictionaries: ImportedDictionary[];
   opdsCatalogs: OPDSCatalog[];
 
   kosync: KOSyncSettings;

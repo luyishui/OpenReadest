@@ -8,7 +8,17 @@ import { CustomTextureInfo } from '@/styles/textures';
 export type AppPlatform = 'web' | 'tauri';
 export type OsPlatform = 'android' | 'ios' | 'macos' | 'windows' | 'linux' | 'unknown';
 // prettier-ignore
-export type BaseDir = | 'Books' | 'Settings' | 'Data' | 'Fonts' | 'Images' | 'Log' | 'Cache' | 'Temp' | 'None';
+export type BaseDir =
+  | 'Books'
+  | 'Settings'
+  | 'Data'
+  | 'Fonts'
+  | 'Images'
+  | 'Dictionaries'
+  | 'Log'
+  | 'Cache'
+  | 'Temp'
+  | 'None';
 export type DeleteAction = 'cloud' | 'local' | 'both';
 export type SelectDirectoryMode = 'read' | 'write';
 export type DistChannel = 'readest' | 'playstore' | 'appstore' | 'unknown';
@@ -60,6 +70,14 @@ export interface FileSystem {
   exists(path: string, base: BaseDir): Promise<boolean>;
   stats(path: string, base: BaseDir): Promise<FileInfo>;
   getPrefix(base: BaseDir): Promise<string>;
+}
+
+export interface SaveLibraryBooksOptions {
+  /**
+   * Overwrite library.json with exactly the supplied books. Routine saves
+   * should keep the default merge-floor behavior to avoid cold-start data loss.
+   */
+  replace?: boolean;
 }
 
 export interface AppService {
@@ -151,7 +169,7 @@ export interface AppService {
   saveBookConfig(book: Book, config: BookConfig, settings?: SystemSettings): Promise<void>;
   loadBookContent(book: Book): Promise<BookContent>;
   loadLibraryBooks(): Promise<Book[]>;
-  saveLibraryBooks(books: Book[]): Promise<void>;
+  saveLibraryBooks(books: Book[], options?: SaveLibraryBooksOptions): Promise<void>;
   getCoverImageUrl(book: Book): string;
   getCoverImageBlobUrl(book: Book): Promise<string>;
   generateCoverImageUrl(book: Book): Promise<string>;

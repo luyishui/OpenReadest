@@ -1,0 +1,24 @@
+{
+  "compileOnSave": true,
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "target": "ES6",
+    "module": "CommonJS",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "lib": ["DOM", "ES2022"],
+    "declaration": true,
+    "paths": {
+      "../src/*": ["./*"]
+    }
+  },
+  "exclude": ["node_modules"],
+  "include": ["src/**/*.ts"],
+}
