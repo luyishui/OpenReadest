@@ -36,7 +36,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: apps/openreadest-app/src-tauri
+          workspaces: .
           key: windows-x86_64-cargo
 
       - name: install dependencies
@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OpenReadest-windows-x64-setup
-          path: apps/openreadest-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          path: target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           if-no-files-found: error
 
   build-linux:
@@ -88,7 +88,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: apps/openreadest-app/src-tauri
+          workspaces: .
           key: linux-x86_64-cargo
 
       - name: install system dependencies
@@ -118,8 +118,8 @@ jobs:
         with:
           name: OpenReadest-linux-x64
           path: |
-            apps/openreadest-app/src-tauri/target/release/bundle/appimage/*.AppImage
-            apps/openreadest-app/src-tauri/target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
           if-no-files-found: error
 
   build-android:
@@ -160,7 +160,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: apps/openreadest-app/src-tauri
+          workspaces: .
           key: android-cargo
 
       - name: install dependencies
@@ -199,6 +199,19 @@ jobs:
         run: |
           export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
           pnpm tauri android build --apk true
+
+      - name: sign universal APK
+        working-directory: apps/openreadest-app
+        run: |
+          APK_DIR=src-tauri/gen/android/app/build/outputs/apk/universal/release
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" sign \
+            --ks "$RUNNER_TEMP/openreadest.keystore" \
+            --ks-pass pass:openreadest123 \
+            --key-pass pass:openreadest123 \
+            --out "$APK_DIR/app-universal-release.apk" \
+            "$APK_DIR/app-universal-release-unsigned.apk"
+          ls -la "$APK_DIR"
 
       - name: upload Android APK
         uses: actions/upload-artifact@v4
