@@ -9,8 +9,40 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: version
+        run: echo "version=$(node -p "require('./apps/openreadest-app/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 && [ "$EVENT" = "push" ]; then
+            # 该版本已发过且本次只是普通推送 → 跳过，不发版
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
+              gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" --title "OpenReadest $VERSION" --generate-notes
+          fi
+
   build-windows:
+    needs: release
+    if: needs.release.outputs.should_build == 'true'
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
@@ -57,14 +89,23 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
         run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
 
-      - name: upload Windows installer
+      - name: upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: OpenReadest-windows-x64-setup
           path: target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           if-no-files-found: error
 
+      - name: attach Windows installer to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        shell: bash
+        run: gh release upload "v$VERSION" --repo "$GITHUB_REPOSITORY" --clobber target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+
   build-linux:
+    needs: release
+    if: needs.release.outputs.should_build == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
@@ -113,7 +154,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
         run: pnpm tauri build --bundles appimage,deb
 
-      - name: upload Linux packages
+      - name: upload Linux packages artifact
         uses: actions/upload-artifact@v4
         with:
           name: OpenReadest-linux-x64
@@ -122,7 +163,15 @@ jobs:
             target/release/bundle/deb/*.deb
           if-no-files-found: error
 
+      - name: attach Linux packages to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: gh release upload "v$VERSION" --repo "$GITHUB_REPOSITORY" --clobber target/release/bundle/appimage/*.AppImage target/release/bundle/deb/*.deb
+
   build-android:
+    needs: release
+    if: needs.release.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -202,6 +251,8 @@ jobs:
 
       - name: sign universal APK
         working-directory: apps/openreadest-app
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
         run: |
           APK_DIR=src-tauri/gen/android/app/build/outputs/apk/universal/release
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
@@ -209,13 +260,20 @@ jobs:
             --ks "$RUNNER_TEMP/openreadest.keystore" \
             --ks-pass pass:openreadest123 \
             --key-pass pass:openreadest123 \
-            --out "$APK_DIR/app-universal-release.apk" \
+            --out "$APK_DIR/OpenReadest_${VERSION}_universal.apk" \
             "$APK_DIR/app-universal-release-unsigned.apk"
           ls -la "$APK_DIR"
 
-      - name: upload Android APK
+      - name: upload Android APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: OpenReadest-android-apk
-          path: apps/openreadest-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          path: apps/openreadest-app/src-tauri/gen/android/app/build/outputs/apk/universal/release/OpenReadest_*_universal.apk
           if-no-files-found: error
+
+      - name: attach Android APK to release
+        working-directory: apps/openreadest-app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: gh release upload "v$VERSION" --repo "$GITHUB_REPOSITORY" --clobber src-tauri/gen/android/app/build/outputs/apk/universal/release/OpenReadest_*_universal.apk
