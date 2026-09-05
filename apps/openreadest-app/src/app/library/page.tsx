@@ -615,8 +615,8 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           if (syncBooks) pushLibrary();
         }
 
-        // Queue cloud deletion
-        if (deleteAction === 'cloud' || deleteAction === 'both') {
+        // Queue cloud deletion, skipped for books that were never uploaded
+        if ((deleteAction === 'cloud' || deleteAction === 'both') && book.uploadedAt) {
           const transferId = transferManager.queueDelete(book, 1, true);
           if (!transferId) {
             throw new Error('Failed to queue cloud deletion');

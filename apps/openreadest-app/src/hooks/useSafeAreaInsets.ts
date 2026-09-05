@@ -33,10 +33,9 @@ export const useSafeAreaInsets = () => {
 
     const rootStyles = getComputedStyle(document.documentElement);
     const hasCustomProperties = rootStyles.getPropertyValue('--safe-area-inset-top');
-    const isWebView139 = /Chrome\/139/.test(navigator.userAgent);
     // safe-area-inset-* values in css are always 0px in some versions of webview 139
     // due to https://issues.chromium.org/issues/40699457
-    if (appService.isAndroidApp && isWebView139) {
+    if (appService.isAndroidApp) {
       getSafeAreaInsets().then((response) => {
         if (response.error) {
           console.error('Error getting safe area insets from native bridge:', response.error);

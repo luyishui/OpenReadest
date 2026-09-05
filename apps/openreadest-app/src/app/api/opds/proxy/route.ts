@@ -1,5 +1,45 @@
 import { READEST_OPDS_USER_AGENT } from '@/services/constants';
+import { isBlockedHost } from '@/utils/network';
 import { NextRequest, NextResponse } from 'next/server';
+
+// Cap redirect hops so the SSRF host check below can re-run on every one.
+const MAX_REDIRECTS = 5;
+
+// 开发模式下允许局域网地址（本地 OPDS 服务器是 dev 常见用例）；
+// 与 CatelogManager 的 web+production 拦截语义对齐。
+const allowPrivateHosts = () => process.env.NODE_ENV === 'development';
+
+class SsrfBlockedError extends Error {}
+
+/**
+ * Fetch the target while running the SSRF host check on every redirect hop.
+ * `fetch`'s default `redirect: 'follow'` would let a public URL 302 to an
+ * internal address (e.g. the cloud metadata endpoint) after our initial host
+ * check passed, so we follow redirects manually and re-validate each hop.
+ * Throws `SsrfBlockedError` when a hop targets a blocked host or scheme.
+ */
+async function fetchFollowingRedirects(
+  startUrl: string,
+  init: { method: 'GET' | 'HEAD'; headers: HeadersInit; signal: AbortSignal },
+): Promise<Response> {
+  let currentUrl = startUrl;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const parsed = new URL(currentUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new SsrfBlockedError('Only http(s) URLs are supported');
+    }
+    if (!allowPrivateHosts() && isBlockedHost(parsed.hostname)) {
+      throw new SsrfBlockedError('This URL is not allowed');
+    }
+    const response = await fetch(currentUrl, { ...init, redirect: 'manual' });
+    if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+      currentUrl = new URL(response.headers.get('location')!, currentUrl).toString();
+      continue;
+    }
+    return response;
+  }
+  throw new SsrfBlockedError('Too many redirects');
+}
 
 async function handleRequest(request: NextRequest, method: 'GET' | 'HEAD') {
   // Cloudflare Workers incorrectly decodes %26 to & in the url parameter value,
@@ -24,10 +64,21 @@ async function handleRequest(request: NextRequest, method: 'GET' | 'HEAD') {
     );
   }
 
+  let parsedUrl: URL;
   try {
-    new URL(url);
+    parsedUrl = new URL(url);
   } catch {
     return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
+  }
+
+  // SSRF guard: this proxy fetches an arbitrary client-supplied URL server-side,
+  // so reject non-http(s) schemes and internal/loopback/link-local targets
+  // before making any request (the redirect loop re-checks every hop).
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    return NextResponse.json({ error: 'Only http(s) URLs are supported' }, { status: 400 });
+  }
+  if (!allowPrivateHosts() && isBlockedHost(parsedUrl.hostname)) {
+    return NextResponse.json({ error: 'This URL is not allowed' }, { status: 400 });
   }
 
   try {
@@ -44,7 +95,7 @@ async function handleRequest(request: NextRequest, method: 'GET' | 'HEAD') {
       headers['Authorization'] = auth;
     }
 
-    const response = await fetch(url, {
+    const response = await fetchFollowingRedirects(url, {
       method,
       headers,
       signal: controller.signal,
@@ -114,7 +165,10 @@ async function handleRequest(request: NextRequest, method: 'GET' | 'HEAD') {
       });
     }
 
-    if (stream === 'true' && contentLength && parseInt(contentLength) > 1024 * 1024) {
+    // 流式透传条件：显式 stream=true、上游未返回 Content-Length（chunked，
+    // 长度未知）、或长度超过 1MB。长度未知时不做 arrayBuffer() 一次性缓冲，
+    // 否则恶意/异常的上游响应会把代理进程内存打爆（OOM）。
+    if (stream === 'true' || !contentLength || parseInt(contentLength) > 1024 * 1024) {
       console.log(`[OPDS Proxy] Streaming: ${url}`);
 
       return new NextResponse(response.body, {
@@ -150,6 +204,10 @@ async function handleRequest(request: NextRequest, method: 'GET' | 'HEAD') {
     }
   } catch (error) {
     console.error('[OPDS Proxy] Error:', error);
+
+    if (error instanceof SsrfBlockedError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {

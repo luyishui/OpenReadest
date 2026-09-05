@@ -23,11 +23,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<LocalUser | null>(null);
 
   useEffect(() => {
+    // 只清理外部持久化残留；token/user 的 state 初始即为 null，stub login
+    // 也只写 null 且不持久化，无需在 effect 里 setState（级联渲染告警）。
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
   }, []);
 
   const login = (newToken: string, newUser: LocalUser) => {

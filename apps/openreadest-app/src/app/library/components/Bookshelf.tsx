@@ -220,7 +220,9 @@ const Bookshelf: React.FC<BookshelfProps> = ({
 
   const confirmDelete = async () => {
     const books = getBooksToDelete();
-    const concurrency = 20;
+    // keep this low: each deletion issues synchronous fs commands that run on the
+    // native main thread, and high concurrency can freeze the UI (ANR) on Android
+    const concurrency = 3;
 
     for (let i = 0; i < books.length; i += concurrency) {
       if (abortDeletionRef.current) {

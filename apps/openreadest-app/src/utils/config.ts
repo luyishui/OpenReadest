@@ -8,11 +8,24 @@ export const getMaxInlineSize = (viewSettings: ViewSettings) => {
   const screenAspectRatio = isVertical ? screenHeight / screenWidth : screenWidth / screenHeight;
   const isUnfoldedScreen = screenAspectRatio < 1.3 && screenAspectRatio > 0.77 && screenWidth > 600;
 
-  return isVertical
-    ? Math.max(screenWidth, screenHeight, 720, viewSettings.maxInlineSize)
-    : isUnfoldedScreen
-      ? viewSettings.maxInlineSize * 0.8
-      : viewSettings.maxInlineSize;
+  if (isVertical) {
+    return Math.max(screenWidth, screenHeight, 720, viewSettings.maxInlineSize);
+  }
+
+  const maxInlineSize = isUnfoldedScreen
+    ? viewSettings.maxInlineSize * 0.8
+    : viewSettings.maxInlineSize;
+  // cap the column width so the configured column count stays reachable, but
+  // only while each column keeps a readable width; below that keep the user
+  // value and let the paginator fall back to fewer columns on its own
+  // (maxColumnCount is an upper bound, not a target)
+  if (!viewSettings.scrolled && viewSettings.maxColumnCount > 1) {
+    const perColumnSize = Math.floor(screenWidth / viewSettings.maxColumnCount);
+    if (perColumnSize >= 300) {
+      return Math.min(maxInlineSize, perColumnSize);
+    }
+  }
+  return maxInlineSize;
 };
 
 export const getDefaultMaxInlineSize = () => {

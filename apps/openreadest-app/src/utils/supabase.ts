@@ -9,8 +9,8 @@ type DisabledSupabaseClient = {
       deleteUser: () => Promise<{ data: null; error: Error }>;
     };
   };
-  from: (...args: unknown[]) => any;
-  rpc: (...args: unknown[]) => any;
+  from: (...args: unknown[]) => unknown;
+  rpc: (...args: unknown[]) => unknown;
 };
 
 const createDisabledSupabaseClient = (): DisabledSupabaseClient => ({

@@ -23,6 +23,7 @@ export const LOCAL_BOOKS_SUBDIR = `${DATA_SUBDIR}/Books`;
 export const CLOUD_BOOKS_SUBDIR = `${DATA_SUBDIR}/Books`;
 export const LOCAL_FONTS_SUBDIR = `${DATA_SUBDIR}/Fonts`;
 export const LOCAL_IMAGES_SUBDIR = `${DATA_SUBDIR}/Images`;
+export const LOCAL_DICTIONARIES_SUBDIR = `${DATA_SUBDIR}/Dictionaries`;
 
 export const SETTINGS_FILENAME = 'settings.json';
 
@@ -77,6 +78,7 @@ export const DEFAULT_SYSTEM_SETTINGS: Partial<SystemSettings> = {
   libraryCoverFit: 'crop',
   libraryAutoColumns: true,
   libraryColumns: 6,
+  customDictionaries: [],
 
   kosync: DEFAULT_KOSYNC_SETTINGS,
 
@@ -155,6 +157,7 @@ export const DEFAULT_BOOK_LAYOUT: BookLayout = {
   maxBlockSize: getDefaultMaxBlockSize(),
   animated: false,
   isEink: false,
+  isColorEink: false,
   writingMode: 'auto',
   vertical: false,
   rtl: false,

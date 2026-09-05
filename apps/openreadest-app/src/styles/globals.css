@@ -61,7 +61,7 @@ body {
 }
 
 .full-height {
-  height: -webkit-fill-available;
+  height: 100vh;
 }
 
 @supports (height: 100dvh) {

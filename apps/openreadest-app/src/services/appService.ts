@@ -7,6 +7,7 @@ import {
   FileItem,
   OsPlatform,
   ResolvedPath,
+  SaveLibraryBooksOptions,
   SelectDirectoryMode,
 } from '@/types/system';
 import { FileSystem, BaseDir, DeleteAction } from '@/types/system';
@@ -819,10 +820,50 @@ export abstract class BaseAppService implements AppService {
     return books;
   }
 
-  async saveLibraryBooks(books: Book[]): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const libraryBooks = books.map(({ coverImageUrl, ...rest }) => rest);
-    await this.safeSaveJSON(getLibraryFilename(), 'Books', libraryBooks);
+  private pendingLibrarySave: { books: Book[]; replace: boolean } | null = null;
+  private librarySaveInFlight: Promise<void> | null = null;
+
+  async saveLibraryBooks(books: Book[], options?: SaveLibraryBooksOptions): Promise<void> {
+    // coalesce concurrent saves so parallel callers (e.g. batch deletion) never
+    // interleave writes to library.json and only the latest snapshot is written
+    this.pendingLibrarySave = { books, replace: options?.replace ?? false };
+    this.librarySaveInFlight ??= (async () => {
+      let lastError: unknown = null;
+      try {
+        while (this.pendingLibrarySave) {
+          const { books: snapshot, replace } = this.pendingLibrarySave;
+          this.pendingLibrarySave = null;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const incoming = snapshot.map(({ coverImageUrl, ...rest }) => rest);
+          try {
+            let libraryBooks: Book[] = incoming;
+            if (!replace) {
+              // merge-floor: the on-disk library is a floor a routine save may
+              // add to or modify (including setting `deletedAt` tombstones) but
+              // never silently shrink — a stale or partially-loaded in-memory
+              // library (e.g. the cold-start "Open with" race) must not wipe
+              // books that only exist on disk; deliberate authoritative
+              // rewrites go through `replace: true`
+              const existing = await this.safeLoadJSON<Book[]>(getLibraryFilename(), 'Books', []);
+              const merged = new Map<string, Book>();
+              for (const book of existing) merged.set(book.hash, book);
+              for (const book of incoming) merged.set(book.hash, book); // incoming wins per hash
+              libraryBooks = Array.from(merged.values());
+            }
+            await this.safeSaveJSON(getLibraryFilename(), 'Books', libraryBooks);
+            lastError = null;
+          } catch (error) {
+            // keep draining newer snapshots; surface the error only when the
+            // final write also failed
+            lastError = error;
+          }
+        }
+      } finally {
+        this.librarySaveInFlight = null;
+      }
+      if (lastError) throw lastError;
+    })();
+    return this.librarySaveInFlight;
   }
 
   private imageToArrayBuffer(imageUrl?: string, imageFile?: string): Promise<ArrayBuffer> {

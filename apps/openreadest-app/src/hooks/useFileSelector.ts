@@ -139,6 +139,11 @@ export const FILE_SELECTION_PRESETS = {
     extensions: ['ttf', 'otf', 'woff', 'woff2'],
     dialogTitle: _('Select Fonts'),
   },
+  dictionaries: {
+    accept: '.ifo,.idx,.dict,.dict.dz,.syn,.mdx,.mdd,.slob,.index',
+    extensions: ['ifo', 'idx', 'dict', 'dz', 'syn', 'mdx', 'mdd', 'slob', 'index'],
+    dialogTitle: _('Select Dictionary Files'),
+  },
   covers: {
     accept: '.png, .jpg, .jpeg, .gif',
     extensions: ['png', 'jpg', 'jpeg', 'gif'],

@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::sync::OnceLock;
 
 /// Known e-ink device manufacturers and brands (case-insensitive matching)
 const EINK_MANUFACTURERS: &[&str] = &[
@@ -65,8 +66,15 @@ fn get_system_property(prop: &str) -> Option<String> {
         })
 }
 
-/// Check if the current Android device is an e-ink device
+/// Check if the current Android device is an e-ink device.
+///
+/// The result is cached on first call so subsequent calls are free.
 pub fn is_eink_device() -> bool {
+    static IS_EINK: OnceLock<bool> = OnceLock::new();
+    *IS_EINK.get_or_init(detect_eink_device)
+}
+
+fn detect_eink_device() -> bool {
     // Get device manufacturer and model
     let manufacturer = get_system_property("ro.product.manufacturer")
         .or_else(|| get_system_property("ro.product.brand"))
