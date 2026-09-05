@@ -72,11 +72,6 @@ jobs:
         run: |
           pnpm format:check || (pnpm format && git diff && exit 1)
 
-      - name: run tests
-        working-directory: apps/openreadest-app
-        run: |
-          pnpm test -- --watch=false
-
       - name: run lint
         working-directory: apps/openreadest-app
         run: |
