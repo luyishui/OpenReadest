@@ -51,9 +51,19 @@ export const tauriHandleOnCloseWindow = async (callback: () => void) => {
   const currentWindow = getCurrentWindow();
   return await currentWindow.onCloseRequested(async (event) => {
     event.preventDefault();
-    await callback();
+    // callback 抛错时也必须继续走 destroy：preventDefault 已拦截默认关闭，
+    // 若这里向上抛出，下面的 destroy 永不执行，窗口会卡死在桌面上无法关闭。
+    try {
+      await callback();
+    } catch (error) {
+      console.error('window close callback failed:', error);
+    }
     if (currentWindow.label.startsWith('reader')) {
-      await emitTo('main', 'close-reader-window', { label: currentWindow.label });
+      // emitTo 也兜底：main 窗口已销毁/IPC 失败时 reject 会阻断 destroy，
+      // 与上面的 callback 同理——preventDefault 之后 destroy 必须必然执行。
+      await emitTo('main', 'close-reader-window', { label: currentWindow.label }).catch(
+        (error) => console.error('emit close-reader-window failed:', error),
+      );
       setTimeout(() => currentWindow.destroy(), 300);
     } else if (currentWindow.label === 'main') {
       await currentWindow.destroy();

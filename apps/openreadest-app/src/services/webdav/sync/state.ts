@@ -14,6 +14,12 @@ export interface WebDavSyncStateRemoteFingerprint {
 export interface WebDavSyncStateEntry {
   local?: WebDavSyncStateFileFingerprint;
   remote?: WebDavSyncStateRemoteFingerprint;
+  /**
+   * 墓碑时间戳（毫秒），存在即表示该条目已删除。
+   * 墓碑条目同时携带删除前的 local 指纹：清扫时用它区分"删除那一刻就存在、
+   * 此后未变的同一文件"（可安全删除）与"删除后重新导入的同路径文件"（须复活），
+   * 后者仅靠 mtime 无法区分。旧版本墓碑没有 local → 无法证明同一文件，按复活处理。
+   */
   deletedAt?: number;
   updatedAt?: number;
   /**
