@@ -94,6 +94,23 @@ const areLocalFingerprintsEqual = (
   return false;
 };
 
+// 墓碑清扫专用的"同一文件"判定：删除是不可逆操作，要求有证据相同才删。
+// areLocalFingerprintsEqual 对"两端都缺"返回 true（常规同步语义），这里反过来：
+// 两端必须至少有一对可比字段（md5 优先、size 兜底）且相等，才认为当前文件就是
+// 墓碑删除时的那个文件；指纹不一致或不可比（含旧墓碑没有 local 指纹）→ 无法
+// 证明同一文件 → 一律按复活处理（宁留不删，数据安全优先）。
+const isSameLocalFileAsTombstone = (
+  tombstoneLocal: WebDavSyncStateEntry['local'],
+  current: WebDavSyncStateEntry['local'],
+): boolean => {
+  if (!tombstoneLocal || !current) return false;
+  const comparable =
+    (!!tombstoneLocal.md5 && !!current.md5) ||
+    (typeof tombstoneLocal.size === 'number' && typeof current.size === 'number');
+  if (!comparable) return false;
+  return areLocalFingerprintsEqual(tombstoneLocal, current);
+};
+
 const areRemoteFingerprintsEqual = (
   a?: WebDavSyncStateEntry['remote'],
   b?: WebDavSyncStateEntry['remote'],
@@ -381,10 +398,15 @@ export const syncWebDavSelection = async (
   const includeConfig = options.includeConfig ?? true;
   const includeCovers = options.includeCovers ?? true;
 
+  // 书目文件条目额外携带该书在本地书架（library.json）中的存活状态：
+  // 「移除设备副本」（deleteAction:'local'）只删 bookFile、保留书架活条目，
+  // 文件缺失不等于本地删除——localDeletion 判定必须以 bookDeletedAt 为准，
+  // 见下方 localDeletion 的注释。
   const items: Array<{
     key: string;
     localPath?: string;
     remotePath: string;
+    bookDeletedAt?: number | null;
   }> = [];
 
   if (includeLibrary) {
@@ -403,6 +425,7 @@ export const syncWebDavSelection = async (
         key: `Books/${local.bookFile}`,
         localPath: local.bookFile,
         remotePath: remote.bookFile,
+        bookDeletedAt: book.deletedAt,
       });
     }
     if (includeCovers) {
@@ -482,20 +505,25 @@ export const syncWebDavSelection = async (
       if (!includeLibrary && !selectedKeys.has(key)) continue;
       const localPath = key.slice('Books/'.length);
 
-      // 本地存在时区分"删除前的旧文件"与"删除后重新导入的文件"：
+      // 本地存在时区分"删除前的旧文件"与"删除后重新导入的文件"，任一即复活：
       // - 文件修改时间晚于墓碑时间 → 重新导入 → 复活（清除墓碑，让正常流程重新上传）
       // - 无法获取修改时间（web 平台/JSON 文件）或读取失败（IO 抖动）→ 保守复活，
       //   宁可保留本地文件也不误删（数据安全优先）
+      // - 墓碑携带的删除前 local 指纹与当前指纹不一致（或不可比）→ 不是删除时
       let localFingerprint: LocalFingerprint | null = null;
       try {
         localFingerprint = await computeLocalFingerprint(appService, localPath, 'Books');
       } catch {
-        localFingerprint = null;
+        // 本地读取失败（IO 抖动/权限）：本地状态未知，整条目跳过——绝不能
+        // 落到「fingerprint=null 继续往下走远端删除」，否则一次瞬时 stat
+        // 失败就会把远端备份删掉（数据安全优先）。
+        continue;
       }
       const revived =
         !!localFingerprint &&
         (typeof localFingerprint.modifiedAt !== 'number' ||
-          localFingerprint.modifiedAt > entry.deletedAt);
+          localFingerprint.modifiedAt > entry.deletedAt ||
+          !isSameLocalFileAsTombstone(entry.local, localFingerprint));
       if (revived) {
         delete state.entries[key];
         stateDirty = true;
@@ -511,6 +539,12 @@ export const syncWebDavSelection = async (
           log('download', key, 'failed', (error as Error).message || '本地删除失败');
           continue;
         }
+      } else {
+        // 本地已无该文件：远端删除传播只在「本地确实删了文件」或全量收敛时
+        // 才允许。此处不做远端删除——非全量同步里这可能是用户在下载页勾选
+        // 了带墓碑的书（意图是下载而非删除），墓碑经状态合并而来时远端可能
+        // 仍有文件；删除传播交给条目循环按下载/上传语义处理。
+        continue;
       }
 
       const remoteDeletedAt = remoteState.entries[key]?.deletedAt ?? 0;
@@ -703,21 +737,51 @@ export const syncWebDavSelection = async (
     };
 
     const synchronizedBefore = !!baseEntry.local && !!baseEntry.remote && !baseEntry.deletedAt;
+    // 「移除设备副本」（deleteAction:'local'）只删 bookFile、保留书架活条目
+    // （无 deletedAt），是「未下载」语义而非删除语义。localDeletion 需要本地
+    // 显式删除的证据：书目文件条目仅当 bookDeletedAt 存在（用户在书架删书）
+    // 时，文件缺失才可判本地删除；非书目条目（cover/config/library）没有对应
+    // 的存活标记，保持原有判据（它们不与「移除设备副本」共享路径）。
+    // 书目文件条目总是带 bookDeletedAt 键（值为 Book.deletedAt：number=显式
+    // 删除 / null|undefined=书架活条目）；cover/config/library 条目不带该键。
+    const isBookFileItem = 'bookDeletedAt' in item;
+    const localEntryDeleted = item.bookDeletedAt != null;
     const localDeletion =
-      synchronizedBefore && !localExists && remoteExists && !remoteChanged;
+      synchronizedBefore &&
+      !localExists &&
+      remoteExists &&
+      !remoteChanged &&
+      (!isBookFileItem || localEntryDeleted);
+    // 对称防护：远端文件缺失对书目条目同样不等于"远端已删"——书架活条目
+    // （bookDeletedAt 为空）的书可能只是从未上传、或远端被外部清空/其他设备
+    // 「移除设备副本」以外的路径删过，此时正确动作是落到上传分支回补远端
+    // （localExists && !remoteExists → upload），而非把本地实体文件删掉。
+    // 经引擎的远端删除必留状态墓碑，由 tombstoneCleanup 分支（带删除前指纹
+    // 比对）负责本地删除传播；无墓碑的 remoteDeletion 仅当书架条目已显式
+    // 删除（localEntryDeleted）时成立。bothDeleted 同理（见下，同一判据）。
     const remoteDeletion =
-      synchronizedBefore && localExists && !remoteExists && !localChanged;
-    const bothDeleted = synchronizedBefore && !localExists && !remoteExists;
+      synchronizedBefore &&
+      localExists &&
+      !remoteExists &&
+      !localChanged &&
+      (!isBookFileItem || localEntryDeleted);
+    const bothDeleted =
+      synchronizedBefore &&
+      !localExists &&
+      !remoteExists &&
+      (!isBookFileItem || localEntryDeleted);
 
-    // 墓碑条目 + 本地文件存在时的复活判定（与墓碑循环一致）：
+    // 墓碑条目 + 本地文件存在时的复活判定（与墓碑循环同一套判据）：
     // 墓碑循环读取瞬时失败（IO 抖动）或同步中途重新导入时，这里可能先于
     // 墓碑循环遇到带墓碑的条目——若不复活，tombstoneCleanup 会销毁
-    // 重新导入的同 hash 文件。
+    // 重新导入的同路径文件。复活条件：mtime 缺失/晚于墓碑，或墓碑携带的
+    // 删除前 local 指纹与当前指纹不一致/不可比（无法证明是同一文件）。
     let tombstoneCleared = false;
     if (baseEntry.deletedAt && localExists) {
       const revived =
         typeof localFingerprint?.modifiedAt !== 'number' ||
-        (localFingerprint?.modifiedAt ?? 0) > baseEntry.deletedAt;
+        (localFingerprint?.modifiedAt ?? 0) > baseEntry.deletedAt ||
+        !isSameLocalFileAsTombstone(baseEntry.local, localFingerprint ?? undefined);
       if (revived) {
         delete state.entries[item.key];
         stateDirty = true;
@@ -726,6 +790,12 @@ export const syncWebDavSelection = async (
     }
     const tombstoneCleanup =
       !!baseEntry.deletedAt && !tombstoneCleared && (localExists || remoteExists);
+    // 下载意图保护：书架活条目（bookDeletedAt 为空）的书目文件即使带墓碑，
+    // 也绝不向远端发删除——「移除设备副本」留下的活条目 + 状态合并来的
+    // 墓碑 + 远端实有文件，正是下载页「同步下载」的场景，远端存在即应
+    // 恢复下载而非删远端。仅在本地书被显式删除（或非书目条目）时才允许
+    // 墓碑驱动的远端删除收敛。
+    const allowRemoteTombstoneDelete = !isBookFileItem || localEntryDeleted;
 
     const markDeleted = async () => {
       if (options.dryRun) {
@@ -734,17 +804,30 @@ export const syncWebDavSelection = async (
         return;
       }
       try {
-        if (localDeletion || (tombstoneCleanup && remoteExists)) {
+        if (localDeletion || (tombstoneCleanup && remoteExists && allowRemoteTombstoneDelete)) {
           const result = await client.delete(item.remotePath);
           if (!result.ok && result.status !== 404) throw new Error(result.error || '远端删除失败');
           log('upload', item.key, 'completed', '已同步本地删除');
         }
-        if ((remoteDeletion || (tombstoneCleanup && localExists)) && item.localPath) {
+        // 镜像闸门：书目活条目不因「远端缺文件/带墓碑」而删本地实体——
+        // 远端缺失对书目条目只意味着"未上传/待回补"（上方 remoteDeletion
+        // 已收窄），墓碑驱动的本地删除同样要求书架条目已显式删除。
+        if (
+          (remoteDeletion || (tombstoneCleanup && localExists && allowRemoteTombstoneDelete)) &&
+          item.localPath
+        ) {
           await appService.deleteFile(item.localPath, 'Books');
           log('download', item.key, 'completed', '已同步远端删除');
         }
         const deletedAt = Date.now();
-        state.entries[item.key] = { deletedAt, updatedAt: deletedAt };
+        // 墓碑携带删除前的本地指纹：清扫时据此区分"删除时的同一文件"
+        // （指纹一致且 mtime 未变 → 可删）与"删除后重新导入的同路径文件"
+        // （指纹不一致 → 复活），见 isSameLocalFileAsTombstone。
+        state.entries[item.key] = {
+          local: localFingerprint ?? baseEntry.local,
+          deletedAt,
+          updatedAt: deletedAt,
+        };
         stateDirty = true;
         deletionHandled = true;
       } catch (error) {
@@ -759,7 +842,18 @@ export const syncWebDavSelection = async (
       }
     };
 
-    if (localDeletion || remoteDeletion || bothDeleted || tombstoneCleanup) {
+    // 书架活条目 + 本地缺文件 + 远端有文件的墓碑条目（下载页勾选带墓碑的
+    // 书/「移除设备副本」后的自动同步）：按下载意图恢复——清掉墓碑让条目
+    // 落到正常下载分支（远端存在即拉回本地），绝不向远端发删除、也不重
+    // 写生墓碑。墓碑在状态里先清，避免 markDeleted 把它又写回去。
+    let tombstoneForCleanup = tombstoneCleanup;
+    if (tombstoneForCleanup && !localExists && remoteExists && !allowRemoteTombstoneDelete) {
+      delete state.entries[item.key];
+      stateDirty = true;
+      tombstoneForCleanup = false;
+    }
+
+    if (localDeletion || remoteDeletion || bothDeleted || tombstoneForCleanup) {
       await markDeleted();
     } else if (localChanged && remoteChanged) {
       const conflict: WebDavConflictItem = {

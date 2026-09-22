@@ -411,14 +411,19 @@ export const WebDavCenterWindow = () => {
 
     const byHash = new Map(remote.map((b) => [b.hash, b]));
     for (const book of booksToUpsert) {
+      const { deletedAt: _dropped, ...rest } = (byHash.get(book.hash) ?? {}) as Book;
+      // 重新上传 = 复活意图：远端条目可能还带着旧墓碑的 deletedAt，spread
+      // 会原样保留它；updatedAt 刷成 now 后 numericVersion 取 max(updatedAt,
+      // deletedAt) 变成「新墓碑」，经 mergeLibrary 回写本地把书标删。必须显式
+      // 丢弃 deletedAt，让远端索引回到活条目。
       byHash.set(book.hash, {
-        ...byHash.get(book.hash),
+        ...rest,
         hash: book.hash,
         format: book.format,
         title: book.title,
         sourceTitle: book.sourceTitle,
         author: book.author,
-        createdAt: byHash.get(book.hash)?.createdAt ?? book.createdAt ?? Date.now(),
+        createdAt: rest.createdAt ?? book.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       } as Book);
     }
