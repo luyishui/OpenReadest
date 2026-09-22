@@ -64,8 +64,7 @@ const createDisabledIAPError = () =>
   new Error('OpenReadest has disabled Google Play in-app purchase verification services.');
 
 export class GoogleIAPVerifier {
-  constructor() {
-  }
+  constructor() {}
 
   async verifyPurchase(params: VerifyPurchaseParams): Promise<VerificationResult> {
     void params;

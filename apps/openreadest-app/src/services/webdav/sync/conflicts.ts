@@ -57,7 +57,10 @@ const collectIds = (value: unknown, idKeys: string[]): Map<string, unknown> | nu
 
 const truncate = (entries: string[]): { entries: string[]; truncated: number } => {
   if (entries.length <= JSON_DIFF_MAX_ENTRIES) return { entries, truncated: 0 };
-  return { entries: entries.slice(0, JSON_DIFF_MAX_ENTRIES), truncated: entries.length - JSON_DIFF_MAX_ENTRIES };
+  return {
+    entries: entries.slice(0, JSON_DIFF_MAX_ENTRIES),
+    truncated: entries.length - JSON_DIFF_MAX_ENTRIES,
+  };
 };
 
 export const summarizeJsonDiff = (
@@ -81,7 +84,9 @@ export const summarizeJsonDiff = (
       const onlyInLocal = [...localMap.keys()].filter((id) => !remoteMap.has(id)).sort();
       const onlyInRemote = [...remoteMap.keys()].filter((id) => !localMap.has(id)).sort();
       const changed = [...localMap.keys()].filter(
-        (id) => remoteMap.has(id) && JSON.stringify(localMap.get(id)) !== JSON.stringify(remoteMap.get(id)),
+        (id) =>
+          remoteMap.has(id) &&
+          JSON.stringify(localMap.get(id)) !== JSON.stringify(remoteMap.get(id)),
       );
       const truncatedOnlyLocal = truncate(onlyInLocal);
       const truncatedOnlyRemote = truncate(onlyInRemote);
@@ -92,7 +97,8 @@ export const summarizeJsonDiff = (
         changed: truncatedChanged.entries,
         localCount: localMap.size,
         remoteCount: remoteMap.size,
-        truncated: truncatedOnlyLocal.truncated + truncatedOnlyRemote.truncated + truncatedChanged.truncated,
+        truncated:
+          truncatedOnlyLocal.truncated + truncatedOnlyRemote.truncated + truncatedChanged.truncated,
       };
     }
   }
@@ -112,7 +118,8 @@ export const summarizeJsonDiff = (
       onlyInLocal: truncatedOnlyLocal.entries,
       onlyInRemote: truncatedOnlyRemote.entries,
       changed: truncatedChanged.entries,
-      truncated: truncatedOnlyLocal.truncated + truncatedOnlyRemote.truncated + truncatedChanged.truncated,
+      truncated:
+        truncatedOnlyLocal.truncated + truncatedOnlyRemote.truncated + truncatedChanged.truncated,
     };
   }
 

@@ -15,7 +15,13 @@ export interface WebDavProfile {
 
 export type WebDavSyncDirection = 'upload' | 'download';
 
-export type WebDavSyncItemStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped' | 'conflict';
+export type WebDavSyncItemStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'skipped'
+  | 'conflict';
 
 export interface WebDavSyncLogItem {
   id: string;

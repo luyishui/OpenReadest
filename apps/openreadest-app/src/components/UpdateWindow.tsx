@@ -28,7 +28,10 @@ const DEFAULT_UPDATE_CONFIG: Required<UpdateConfig> = {
   detail: '如果一时打不开或加载不出来，多半是 GitHub 网络波动，换个时间或者稍后再试就好。',
 };
 
-const mergeUpdateConfig = (base: UpdateConfig, override?: UpdateConfig): Required<UpdateConfig> => ({
+const mergeUpdateConfig = (
+  base: UpdateConfig,
+  override?: UpdateConfig,
+): Required<UpdateConfig> => ({
   ...DEFAULT_UPDATE_CONFIG,
   ...base,
   ...override,
@@ -119,25 +122,21 @@ export const UpdateWindow = () => {
         <div className='flex flex-col gap-5 py-2'>
           <div className='bg-base-200 rounded-[28px] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.08)] ring-1 ring-black/5'>
             <div className='space-y-2'>
-              <p className='text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-content/50'>
+              <p className='text-neutral-content/50 text-[11px] font-semibold uppercase tracking-[0.28em]'>
                 {_(config.eyebrow)}
               </p>
-              <h2 className='text-2xl font-black tracking-tight text-base-content'>
+              <h2 className='text-base-content text-2xl font-black tracking-tight'>
                 {_('当前版本 {{version}}', { version: getAppVersion() })}
               </h2>
             </div>
-            <p className='mt-3 text-sm leading-7 text-base-content/80'>
-              {_(config.summary)}
-            </p>
-            <p className='mt-2 text-sm leading-7 text-base-content/75'>
-              {_(config.detail)}
-            </p>
+            <p className='text-base-content/80 mt-3 text-sm leading-7'>{_(config.summary)}</p>
+            <p className='text-base-content/75 mt-2 text-sm leading-7'>{_(config.detail)}</p>
           </div>
 
           <div className='bg-base-200 grid gap-3 rounded-[28px] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.08)] ring-1 ring-black/5 sm:grid-cols-2'>
             <button
               type='button'
-              className='btn h-12 rounded-2xl border-none bg-base-content text-base-100 shadow-none hover:bg-base-content/90 active:bg-base-content focus-visible:outline-none'
+              className='btn bg-base-content text-base-100 hover:bg-base-content/90 active:bg-base-content h-12 rounded-2xl border-none shadow-none focus-visible:outline-none'
               onClick={() => openUpdateTarget(config.projectHomepage)}
             >
               <RiGithubLine className='h-4 w-4' />
@@ -145,7 +144,7 @@ export const UpdateWindow = () => {
             </button>
             <button
               type='button'
-              className='btn h-12 rounded-2xl border-base-300 bg-base-100 text-base-content shadow-none hover:bg-base-100 hover:text-base-content active:bg-base-200 focus-visible:outline-none'
+              className='btn border-base-300 bg-base-100 text-base-content hover:bg-base-100 hover:text-base-content active:bg-base-200 h-12 rounded-2xl shadow-none focus-visible:outline-none'
               onClick={() => openUpdateTarget(config.releaseNotesUrl)}
             >
               <RiDownloadCloud2Line className='h-4 w-4' />

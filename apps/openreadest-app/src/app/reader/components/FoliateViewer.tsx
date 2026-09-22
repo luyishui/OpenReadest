@@ -465,7 +465,9 @@ const FoliateViewer: React.FC<{
       });
       const currentViewSettings = getViewSettings(bookKey);
       if (currentViewSettings) {
-        viewRef.current?.renderer.setStyles?.(getStyles(currentViewSettings, undefined, loadedFonts));
+        viewRef.current?.renderer.setStyles?.(
+          getStyles(currentViewSettings, undefined, loadedFonts),
+        );
       }
     };
     if (settings.customFonts) {

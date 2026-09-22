@@ -9,8 +9,8 @@ export default function AuthRecoveryPage() {
         <div className='max-w-md space-y-4'>
           <h1 className='text-2xl font-semibold'>Password recovery is unavailable</h1>
           <p className='text-base-content/80'>
-            OpenReadest does not use hosted account authentication anymore, so password reset
-            links are intentionally disabled.
+            OpenReadest does not use hosted account authentication anymore, so password reset links
+            are intentionally disabled.
           </p>
           <div className='flex justify-center'>
             <Link href='/library' className='btn btn-primary rounded-xl'>

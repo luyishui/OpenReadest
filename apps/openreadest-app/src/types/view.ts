@@ -21,9 +21,10 @@ export interface FoliateView extends HTMLElement {
   goRight: () => void;
   getCFI: (index: number, range: Range) => string;
   resolveCFI: (cfi: string) => { index: number; anchor: (doc: Document) => Range };
-  resolveNavigation: (
-    cfiOrHrefOrIndex: string | number,
-  ) => { index: number; anchor?: (doc: Document) => Range };
+  resolveNavigation: (cfiOrHrefOrIndex: string | number) => {
+    index: number;
+    anchor?: (doc: Document) => Range;
+  };
   addAnnotation: (
     note: BookNote & { value?: string },
     remove?: boolean,
@@ -110,8 +111,6 @@ type RendererContent = ReturnType<FoliateView['renderer']['getContents']>[number
  * section being read. `renderer.primaryIndex` identifies the primary view;
  * fall back to the first entry like the upstream foliate-js code.
  */
-export const getPrimaryContent = (
-  renderer: FoliateView['renderer'],
-): RendererContent | undefined =>
+export const getPrimaryContent = (renderer: FoliateView['renderer']): RendererContent | undefined =>
   renderer.getContents().find((content) => content.index === renderer.primaryIndex) ??
   renderer.getContents()[0];

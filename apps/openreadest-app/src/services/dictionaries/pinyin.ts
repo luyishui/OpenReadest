@@ -28,13 +28,35 @@
 // Tone marks + edge readings normalize to the same naked syllables:
 // píngguǒ -> pingguo, lǜ -> lv (ü canonicalized to v in the dataset).
 const TONE_STRIP: Record<string, string> = {
-  ā: 'a', á: 'a', ǎ: 'a', à: 'a',
-  ē: 'e', é: 'e', ě: 'e', è: 'e',
-  ī: 'i', í: 'i', ǐ: 'i', ì: 'i',
-  ō: 'o', ó: 'o', ǒ: 'o', ò: 'o',
-  ū: 'u', ú: 'u', ǔ: 'u', ù: 'u',
-  ǖ: 'v', ǘ: 'v', ǚ: 'v', ǜ: 'v', ü: 'v',
-  ń: 'n', ň: 'n', ǹ: 'n', ḿ: 'm',
+  ā: 'a',
+  á: 'a',
+  ǎ: 'a',
+  à: 'a',
+  ē: 'e',
+  é: 'e',
+  ě: 'e',
+  è: 'e',
+  ī: 'i',
+  í: 'i',
+  ǐ: 'i',
+  ì: 'i',
+  ō: 'o',
+  ó: 'o',
+  ǒ: 'o',
+  ò: 'o',
+  ū: 'u',
+  ú: 'u',
+  ǔ: 'u',
+  ù: 'u',
+  ǖ: 'v',
+  ǘ: 'v',
+  ǚ: 'v',
+  ǜ: 'v',
+  ü: 'v',
+  ń: 'n',
+  ň: 'n',
+  ǹ: 'n',
+  ḿ: 'm',
 };
 
 /**
@@ -58,7 +80,11 @@ export const normalizePinyinInput = (input: string): string | null => {
     }
     // Separators and numeric tones (ping2guo3) are ignored…
     if (
-      ch === ' ' || ch === "'" || ch === '’' || ch === '-' || ch === '·' ||
+      ch === ' ' ||
+      ch === "'" ||
+      ch === '’' ||
+      ch === '-' ||
+      ch === '·' ||
       (ch >= '0' && ch <= '9')
     ) {
       continue;
@@ -224,7 +250,9 @@ export const buildPinyinCandidates = async (query: string): Promise<string[] | n
       // per-syllable chars, most frequent first
       const ranked = [...index.charSyllables.keys()]
         .filter((ch) => index.charSyllables.get(ch)!.includes(syllabus))
-        .sort((a, b) => (index.charWeight.get(a) ?? Infinity) - (index.charWeight.get(b) ?? Infinity))
+        .sort(
+          (a, b) => (index.charWeight.get(a) ?? Infinity) - (index.charWeight.get(b) ?? Infinity),
+        )
         .slice(0, MAX_SYNTHETIC_PER_SYLLABLE);
       const next: string[] = [];
       for (const combo of combos) {

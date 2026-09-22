@@ -23,8 +23,9 @@ gen
 packages
 
 # Vendored Assets (Generated/External Code)
-apps/readest-app/public/*.js
-apps/readest-app/public/vendor
+apps/openreadest-app/public/vendor
+apps/openreadest-app/public/*.js
+**/public/vendor
 
 # Environment & Editor
 .env

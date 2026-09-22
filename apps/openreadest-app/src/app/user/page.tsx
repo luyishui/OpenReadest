@@ -21,7 +21,9 @@ const ProfilePage = () => {
           )}
         </p>
         <p className='text-base-content/70 mb-6'>
-          {_('You can continue using local reading features and WebDAV synchronization from your library.')}
+          {_(
+            'You can continue using local reading features and WebDAV synchronization from your library.',
+          )}
         </p>
         <div className='flex gap-3'>
           <button className='btn btn-primary' onClick={() => router.push('/library')}>

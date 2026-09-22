@@ -65,7 +65,10 @@ const decoder = new TextDecoder('utf-8');
 
 /** 把 .ifo 里声明的 charset 归一化为 TextDecoder 支持的标签（如 gbk/utf-16le）。 */
 const normalizeCharset = (value?: string): string => {
-  const raw = (value ?? '').trim().replace(/^["']|["']$/g, '').toLowerCase();
+  const raw = (value ?? '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .toLowerCase();
   if (!raw) return 'utf-8';
   // WHATWG TextDecoder 支持 gbk/gb18030/big5/utf-16le/utf-16be 等。
   // 第三方工具常见别名：cp936/euc-cn ≈ GBK；无字节序的 utf-16/unicode 按 LE。
@@ -381,7 +384,10 @@ export class StarDictReader {
 
     const out: string[] = [];
     const push = (word: string) => {
-      if (word.toLowerCase().startsWith(lower) && !out.some((w) => w.toLowerCase() === word.toLowerCase())) {
+      if (
+        word.toLowerCase().startsWith(lower) &&
+        !out.some((w) => w.toLowerCase() === word.toLowerCase())
+      ) {
         out.push(word);
       }
     };
@@ -399,7 +405,8 @@ export class StarDictReader {
     return out.slice(0, limit);
   }
 
-  private async ensureSynBuilt(): Promise<void> {    if (this.synBuilt) return;
+  private async ensureSynBuilt(): Promise<void> {
+    if (this.synBuilt) return;
     if (!this.synBlob) {
       this.synBuilt = true;
       return;

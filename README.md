@@ -9,9 +9,10 @@ OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力
 **本项目 (OpenReadest) 是基于原项目 [Readest](https://github.com/readest/readest) 的一个独立 Fork（分支/衍生版本）。**
 
 为了避免混淆，特此说明：
+
 1. **独立性**：本项目与原项目 `readest/readest` 是两个相互独立的项目，拥有不同的更新计划和功能路线。
 2. **功能差异**：本项目在原项目基础上增加了特定的新功能，这些修改仅代表本项目的方向。
-3. **问题反馈**：如果你在使用 *本 Fork 版本* 时遇到问题或有功能建议，请直接在本仓库 (`luyishui/OpenReadest`) 提出，不要打扰原项目的开发者。
+3. **问题反馈**：如果你在使用 _本 Fork 版本_ 时遇到问题或有功能建议，请直接在本仓库 (`luyishui/OpenReadest`) 提出，不要打扰原项目的开发者。
 4. **尊重原项目**：原项目的所有荣誉归原作者所有。本项目严格遵循原项目的开源协议 (AGPL-3.0) 进行分发。
 
 感谢原项目 [Readest](https://github.com/readest/readest) 提供的优秀基础！
@@ -20,14 +21,14 @@ OpenReadest 是基于 Readest 的非官方 Fork，重点保留本地阅读能力
 
 ## 功能对比
 
-| 能力 | 原版 Readest | OpenReadest |
-|:---|:---:|:---:|
-| EPUB/PDF/FB2/MOBI/CBZ 阅读 | ✅ | ✅ |
-| 批注/书签/进度 | ✅ | ✅ |
-| 多端支持（桌面/移动） | ✅ | ✅ |
-| WebDAV 同步 | 部分/无内置场景 | ✅ 强化 |
-| AI 朗读（无限） | ✅ | ❌ |
-| DeepL 翻译 | ✅ | ❌ |
+| 能力                       |  原版 Readest   | OpenReadest |
+| :------------------------- | :-------------: | :---------: |
+| EPUB/PDF/FB2/MOBI/CBZ 阅读 |       ✅        |     ✅      |
+| 批注/书签/进度             |       ✅        |     ✅      |
+| 多端支持（桌面/移动）      |       ✅        |     ✅      |
+| WebDAV 同步                | 部分/无内置场景 |   ✅ 强化   |
+| AI 朗读（无限）            |       ✅        |     ❌      |
+| DeepL 翻译                 |       ✅        |     ❌      |
 
 > **提示：** 如需体验完整功能（AI 朗读、DeepL 翻译等），建议使用原版 Readest：https://github.com/readest/readest
 

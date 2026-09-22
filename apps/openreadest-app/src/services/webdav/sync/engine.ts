@@ -559,11 +559,7 @@ export const syncWebDavSelection = async (
   }
 
   for (const item of items) {
-    while (
-      control?.shouldPause?.() &&
-      control?.waitUntilResumed &&
-      !control?.shouldCancel?.()
-    ) {
+    while (control?.shouldPause?.() && control?.waitUntilResumed && !control?.shouldCancel?.()) {
       await control.waitUntilResumed();
     }
     if (control?.shouldCancel?.()) break;
@@ -633,7 +629,8 @@ export const syncWebDavSelection = async (
       }
       remoteProbeAt = Date.now();
     }
-    const remoteFingerprint = remoteSnapshot.kind === 'found' ? remoteSnapshot.fingerprint : undefined;
+    const remoteFingerprint =
+      remoteSnapshot.kind === 'found' ? remoteSnapshot.fingerprint : undefined;
     const remoteExists = remoteSnapshot.kind === 'found';
     const remoteChanged =
       remoteExists && !areRemoteFingerprintsEqual(remoteFingerprint, baseEntry.remote);
@@ -766,10 +763,7 @@ export const syncWebDavSelection = async (
       !localChanged &&
       (!isBookFileItem || localEntryDeleted);
     const bothDeleted =
-      synchronizedBefore &&
-      !localExists &&
-      !remoteExists &&
-      (!isBookFileItem || localEntryDeleted);
+      synchronizedBefore && !localExists && !remoteExists && (!isBookFileItem || localEntryDeleted);
 
     // 墓碑条目 + 本地文件存在时的复活判定（与墓碑循环同一套判据）：
     // 墓碑循环读取瞬时失败（IO 抖动）或同步中途重新导入时，这里可能先于
@@ -1057,8 +1051,7 @@ const resolveConflictItem = async (
   if (remoteProbe.kind === 'unknown') {
     return fail(`远端探测失败（${remoteProbe.error || remoteProbe.status || '未知错误'}）`);
   }
-  const remoteFingerprint =
-    remoteProbe.kind === 'found' ? remoteProbe.fingerprint : undefined;
+  const remoteFingerprint = remoteProbe.kind === 'found' ? remoteProbe.fingerprint : undefined;
 
   // 收敛检查：两端指纹已与状态记录一致 → 冲突已被（可能在本轮解决前由
   // 其他设备）解决，无需再传输，直接视为已解决。

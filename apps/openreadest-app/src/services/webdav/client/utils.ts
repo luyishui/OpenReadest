@@ -46,4 +46,3 @@ export const decodeHrefPathname = (href: string, baseUrl?: string): string => {
     return decodeURIComponent(path);
   }
 };
-

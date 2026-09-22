@@ -55,11 +55,7 @@ export class DictionaryImportError extends Error {
   readonly code: 'no-complete-bundle' | 'store-failed';
   readonly skipped?: string[];
 
-  constructor(
-    code: 'no-complete-bundle' | 'store-failed',
-    message: string,
-    skipped?: string[],
-  ) {
+  constructor(code: 'no-complete-bundle' | 'store-failed', message: string, skipped?: string[]) {
     super(message);
     this.name = 'DictionaryImportError';
     this.code = code;
@@ -318,10 +314,7 @@ export async function importStarDictBundles(
       await Promise.all(bundle.map((file) => storeFile(appService, file, bundleDir)));
     } catch (_error) {
       await appService.deleteDir(bundleDir, 'Dictionaries', true).catch(() => undefined);
-      throw new DictionaryImportError(
-        'store-failed',
-        `Failed to store dictionary "${stem}"`,
-      );
+      throw new DictionaryImportError('store-failed', `Failed to store dictionary "${stem}"`);
     }
 
     // 生成 .idx 偏移边车，让后续查询跳过全量扫描（见 stardictReader）。
@@ -396,7 +389,13 @@ const openReader = async (
         .catch(() => undefined),
     ]);
     const reader = new StarDictReader();
-    await reader.load({ ifo: ifoFile, idx: idxFile, dict: dictFile, syn: synFile, idxOffsets: idxOffsetsFile });
+    await reader.load({
+      ifo: ifoFile,
+      idx: idxFile,
+      dict: dictFile,
+      syn: synFile,
+      idxOffsets: idxOffsetsFile,
+    });
     return reader;
   })();
   readerCache.set(dictionary.id, promise);

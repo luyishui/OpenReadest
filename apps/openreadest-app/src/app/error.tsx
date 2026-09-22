@@ -115,9 +115,7 @@ export default function Error({ error, reset }: ErrorPageProps) {
           </div>
 
           <div className='border-base-300 mt-8 border-t pt-6'>
-            <p className='text-base-content/60 text-sm'>
-              {_('Need help?')}
-            </p>
+            <p className='text-base-content/60 text-sm'>{_('Need help?')}</p>
           </div>
         </div>
       </div>

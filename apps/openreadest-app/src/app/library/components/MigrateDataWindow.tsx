@@ -152,8 +152,10 @@ export const MigrateDataWindow = () => {
     const directLibraryPath = await join(selectedDir, 'Books');
     const directLibraryFile = await join(directLibraryPath, 'library.json');
     const directSettingsFile = await join(selectedDir, SETTINGS_FILENAME);
-    if ((await appService.exists(directLibraryFile, 'None')) ||
-        (await appService.exists(directSettingsFile, 'None'))) {
+    if (
+      (await appService.exists(directLibraryFile, 'None')) ||
+      (await appService.exists(directSettingsFile, 'None'))
+    ) {
       return {
         rootDir: getDirPath(selectedDir),
         dataDir: selectedDir,
@@ -164,8 +166,10 @@ export const MigrateDataWindow = () => {
     const nestedLibraryPath = await join(nestedDataDir, 'Books');
     const nestedLibraryFile = await join(nestedLibraryPath, 'library.json');
     const nestedSettingsFile = await join(nestedDataDir, SETTINGS_FILENAME);
-    if ((await appService.exists(nestedLibraryFile, 'None')) ||
-        (await appService.exists(nestedSettingsFile, 'None'))) {
+    if (
+      (await appService.exists(nestedLibraryFile, 'None')) ||
+      (await appService.exists(nestedSettingsFile, 'None'))
+    ) {
       return {
         rootDir: selectedDir,
         dataDir: nestedDataDir,
@@ -195,14 +199,14 @@ export const MigrateDataWindow = () => {
         return;
       }
 
-      const selectedDir = await appService?.selectDirectory?.(mode === 'connect' ? 'read' : 'write');
+      const selectedDir = await appService?.selectDirectory?.(
+        mode === 'connect' ? 'read' : 'write',
+      );
       if (selectedDir) {
         if (mode === 'connect') {
           const existingDataMatch = await findExistingDataMatch(selectedDir);
           if (!existingDataMatch) {
-            throw new Error(
-              _('No compatible Readest data was found in the selected folder.'),
-            );
+            throw new Error(_('No compatible Readest data was found in the selected folder.'));
           }
           setNewDataDir(existingDataMatch.dataDir);
         } else {
@@ -278,7 +282,9 @@ export const MigrateDataWindow = () => {
       setMigrationStatus('completed');
     } catch (error) {
       console.error('Error connecting existing data:', error);
-      setErrorMessage(_('Failed to use the selected data: {{error}}', { error: error || 'Unknown error' }));
+      setErrorMessage(
+        _('Failed to use the selected data: {{error}}', { error: error || 'Unknown error' }),
+      );
       setMigrationStatus('error');
     }
   };
@@ -406,7 +412,9 @@ export const MigrateDataWindow = () => {
               <button
                 className={clsx(
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  !isConnectMode ? 'bg-base-100 text-base-content shadow-sm' : 'text-base-content/70',
+                  !isConnectMode
+                    ? 'bg-base-100 text-base-content shadow-sm'
+                    : 'text-base-content/70',
                 )}
                 onClick={() => {
                   setMode('migrate');
@@ -421,7 +429,9 @@ export const MigrateDataWindow = () => {
               <button
                 className={clsx(
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isConnectMode ? 'bg-base-100 text-base-content shadow-sm' : 'text-base-content/70',
+                  isConnectMode
+                    ? 'bg-base-100 text-base-content shadow-sm'
+                    : 'text-base-content/70',
                 )}
                 onClick={() => {
                   setMode('connect');
@@ -663,9 +673,7 @@ export const MigrateDataWindow = () => {
                   onClick={isConnectMode ? handleConnectExistingData : handleStartMigration}
                   disabled={!canStartMigration || migrationStatus !== 'idle'}
                 >
-                  {isMigrating && (
-                    <RiLoader2Line className='h-4 w-4 animate-spin' />
-                  )}
+                  {isMigrating && <RiLoader2Line className='h-4 w-4 animate-spin' />}
                   {primaryActionLabel}
                 </button>
               </>

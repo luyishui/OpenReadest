@@ -87,9 +87,7 @@ const WebDavAutoSyncRunner = () => {
           // 冲突列表并入 store 供同步窗口处理（Part 4.4），不再静默跳过。
           useWebDavStore
             .getState()
-            .setConflicts(
-              mergeWebDavConflictLists(useWebDavStore.getState().conflicts, conflicts),
-            );
+            .setConflicts(mergeWebDavConflictLists(useWebDavStore.getState().conflicts, conflicts));
           eventDispatcher.dispatch('toast', {
             message: _('WebDAV 同步检测到 {{count}} 个冲突，请在同步窗口中处理', {
               count: conflicts.length,

@@ -88,7 +88,10 @@ export function isBlockedHost(hostname: string): boolean {
   // 仍解析到回环。WHATWG URL 对点分十进制 IP 会归一化，但保留域名的尾点，
   // 所以先剥掉再检查，否则 isBlockedHost('localhost.') 会放行。
   // 剥掉全部尾点（localhost.. 等双尾点同样存在解析器折叠风险）。
-  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.+$/, '');
+  const h = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.+$/, '');
   if (!h) return true;
   if (h === 'localhost' || h.endsWith('.localhost')) return true;
   if (h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.lan')) return true;

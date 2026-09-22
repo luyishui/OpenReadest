@@ -27,7 +27,11 @@ interface MDXMeta {
 interface MDXInstance {
   meta: MDXMeta;
   header: Record<string, unknown>;
-  lookup(word: string): { keyText: string; definition: string | null } | Promise<{ keyText: string; definition: string | null }>;
+  lookup(
+    word: string,
+  ):
+    | { keyText: string; definition: string | null }
+    | Promise<{ keyText: string; definition: string | null }>;
   prefix(prefix: string): Array<{ keyText: string }>;
 }
 

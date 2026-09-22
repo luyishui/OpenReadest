@@ -60,7 +60,13 @@ export const AboutWindow = () => {
       {isOpen && (
         <div className='about-content flex flex-col gap-5 px-6 py-5'>
           <div className='flex flex-col items-center gap-3 text-center'>
-            <Image src='/icon.png' alt='OpenReadest Logo' className='h-20 w-20' width={80} height={80} />
+            <Image
+              src='/icon.png'
+              alt='OpenReadest Logo'
+              className='h-20 w-20'
+              width={80}
+              height={80}
+            />
             <div className='select-text space-y-1'>
               <h2 className='text-2xl font-bold'>OpenReadest</h2>
               <p className='text-neutral-content text-sm'>
@@ -75,7 +81,9 @@ export const AboutWindow = () => {
               {_('OpenReadest is an independent fork and continued re-development of Readest.')}
             </p>
             <p className='text-base-content/80'>
-              {_('Copyright (c) 2026 luyishui. Based on Readest, originally developed by Bilingify LLC.')}
+              {_(
+                'Copyright (c) 2026 luyishui. Based on Readest, originally developed by Bilingify LLC.',
+              )}
             </p>
             <p className='text-base-content/80'>
               {_('License')}:{' '}

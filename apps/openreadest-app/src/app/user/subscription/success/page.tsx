@@ -19,7 +19,9 @@ const SuccessPage = () => {
           )}
         </p>
         <p className='text-base-content/70 mb-6'>
-          {_('Return to your library to continue using local reading features and WebDAV synchronization.')}
+          {_(
+            'Return to your library to continue using local reading features and WebDAV synchronization.',
+          )}
         </p>
         <div className='flex gap-3'>
           <button className='btn btn-primary' onClick={() => router.push('/library')}>

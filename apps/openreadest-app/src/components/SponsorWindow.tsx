@@ -26,15 +26,17 @@ const DEFAULT_SUPPORT_CONFIG: Required<SupportConfig> = {
   title: '请作者吃顿拼好饭',
   summary:
     'OpenReadest 是 Readest 的独立分支，继续维护 EPUB、PDF、TXT 等阅读能力，并补强 WebDAV 同步与本地优先体验。',
-  detail:
-    '如果这些改动帮你把书库稳定用起来了，可以扫下面这张码支持一下开发、测试设备和持续更新。',
+  detail: '如果这些改动帮你把书库稳定用起来了，可以扫下面这张码支持一下开发、测试设备和持续更新。',
   imageUrl: '/support/sponsor-poster.jpg',
   fallbackImageUrl: '/icon.png',
   projectHomepage: 'https://github.com/luyishui/OpenReadest',
   releaseNotesUrl: 'https://github.com/luyishui/OpenReadest/releases',
 };
 
-const mergeSupportConfig = (base: SupportConfig, override?: SupportConfig): Required<SupportConfig> => ({
+const mergeSupportConfig = (
+  base: SupportConfig,
+  override?: SupportConfig,
+): Required<SupportConfig> => ({
   ...DEFAULT_SUPPORT_CONFIG,
   ...base,
   ...override,
@@ -114,7 +116,11 @@ export const SponsorWindow = () => {
     }
 
     const blob = await response.blob();
-    const extension = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+    const extension = blob.type.includes('png')
+      ? 'png'
+      : blob.type.includes('webp')
+        ? 'webp'
+        : 'jpg';
     const filename = makeSafeFilename(`OpenReadest_support_qr.${extension}`);
 
     return {
@@ -156,11 +162,7 @@ export const SponsorWindow = () => {
 
     if (isAndroid) {
       showToast(
-        [
-          _('请直接截图二维码。'),
-          _('打开支付宝扫一扫'),
-          _('再从相册里识别'),
-        ].join('\n'),
+        [_('请直接截图二维码。'), _('打开支付宝扫一扫'), _('再从相册里识别')].join('\n'),
         'info',
         'mx-auto w-[12em] max-w-[80vw] whitespace-pre-line break-keep text-center leading-7',
       );
@@ -216,19 +218,15 @@ export const SponsorWindow = () => {
           <div className='bg-base-200 rounded-[28px] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.08)] ring-1 ring-black/5'>
             <div className='flex flex-col gap-3'>
               <div className='space-y-2'>
-                <p className='text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-content/50'>
+                <p className='text-neutral-content/50 text-[11px] font-semibold uppercase tracking-[0.28em]'>
                   {_(config.eyebrow)}
                 </p>
-                <h2 className='text-2xl font-black tracking-tight text-base-content'>
+                <h2 className='text-base-content text-2xl font-black tracking-tight'>
                   {_(config.title)}
                 </h2>
               </div>
-              <p className='text-sm leading-7 text-base-content/80'>
-                {_(config.summary)}
-              </p>
-              <p className='text-sm leading-7 text-base-content/75'>
-                {_(config.detail)}
-              </p>
+              <p className='text-base-content/80 text-sm leading-7'>{_(config.summary)}</p>
+              <p className='text-base-content/75 text-sm leading-7'>{_(config.detail)}</p>
             </div>
           </div>
 
@@ -256,7 +254,11 @@ export const SponsorWindow = () => {
             >
               {isSaving ? _('保存中...') : _('我来助你')}
             </button>
-            <button type='button' className='btn btn-outline h-12 rounded-2xl' onClick={handleClose}>
+            <button
+              type='button'
+              className='btn btn-outline h-12 rounded-2xl'
+              onClick={handleClose}
+            >
               {_('下次一定')}
             </button>
           </div>

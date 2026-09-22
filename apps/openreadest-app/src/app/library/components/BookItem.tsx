@@ -1,8 +1,6 @@
 import clsx from 'clsx';
 import { MdCheckCircle, MdCheckCircleOutline } from 'react-icons/md';
-import {
-  LiaInfoCircleSolid,
-} from 'react-icons/lia';
+import { LiaInfoCircleSolid } from 'react-icons/lia';
 
 import { Book } from '@/types/book';
 import { useEnv } from '@/context/EnvContext';

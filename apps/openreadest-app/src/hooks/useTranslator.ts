@@ -12,8 +12,10 @@ const getAvailableTranslator = (provider?: TranslatorName, token?: string | null
     (translator) => (translator.authRequired ? !!token : true) && !translator.quotaExceeded,
   );
 
-  return availableTranslators.find((translator) => translator.name === provider)
-    || availableTranslators[0];
+  return (
+    availableTranslators.find((translator) => translator.name === provider) ||
+    availableTranslators[0]
+  );
 };
 
 export function useTranslator({

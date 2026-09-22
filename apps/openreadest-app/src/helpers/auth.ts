@@ -10,9 +10,7 @@ interface UseAuthCallbackOptions {
   errorDescription?: string | null;
 }
 
-export function handleAuthCallback({
-  navigate,
-}: UseAuthCallbackOptions) {
+export function handleAuthCallback({ navigate }: UseAuthCallbackOptions) {
   console.warn('Auth callback handling is disabled in OpenReadest. Redirecting to library.');
   navigate('/library');
 }

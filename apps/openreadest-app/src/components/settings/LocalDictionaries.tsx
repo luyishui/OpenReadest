@@ -56,17 +56,13 @@ const LocalDictionaries: React.FC = () => {
         const names = result.replaced
           .map((id) => {
             const existing = dictionaries.find((d) => d.id === id);
-            return existing ? getDictionaryStem(existing) ?? id : id;
+            return existing ? (getDictionaryStem(existing) ?? id) : id;
           })
           .join(', ');
-        notes.push(
-          _('Updated existing dictionaries: {{names}}', { names }),
-        );
+        notes.push(_('Updated existing dictionaries: {{names}}', { names }));
       }
       if (result.skipped.length > 0) {
-        notes.push(
-          _('Already imported, skipped: {{names}}', { names: result.skipped.join(', ') }),
-        );
+        notes.push(_('Already imported, skipped: {{names}}', { names: result.skipped.join(', ') }));
       }
       if (notes.length > 0) setInfo(notes.join('; '));
     } catch (cause) {
@@ -173,9 +169,7 @@ const LocalDictionaries: React.FC = () => {
                   onChange={() => handleToggleEnabled(dictionary)}
                   disabled={busy}
                   aria-label={
-                    dictionary.enabled === false
-                      ? _('Enable Dictionary')
-                      : _('Disable Dictionary')
+                    dictionary.enabled === false ? _('Enable Dictionary') : _('Disable Dictionary')
                   }
                 />
                 <div className='min-w-0 flex-1'>

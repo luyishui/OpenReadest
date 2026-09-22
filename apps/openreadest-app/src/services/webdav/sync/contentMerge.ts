@@ -25,10 +25,13 @@ const canonicalize = (value: unknown): unknown => {
 
   return Object.keys(value)
     .sort()
-    .reduce<JsonRecord>((result, key) => {
-      result[key] = canonicalize(value[key]);
-      return result;
-    }, Object.create(null) as JsonRecord);
+    .reduce<JsonRecord>(
+      (result, key) => {
+        result[key] = canonicalize(value[key]);
+        return result;
+      },
+      Object.create(null) as JsonRecord,
+    );
 };
 
 const stableStringify = (value: unknown): string => JSON.stringify(canonicalize(value));

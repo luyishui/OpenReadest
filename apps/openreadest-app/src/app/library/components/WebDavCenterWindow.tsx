@@ -132,7 +132,9 @@ export const WebDavCenterWindow = () => {
   // Part 4.4：正在解决的冲突条目与已加载的差异摘要（path → null 表示已
   // 尝试但不可预览，如二进制文件）
   const [resolvingPaths, setResolvingPaths] = useState<Set<string>>(new Set());
-  const [conflictDetails, setConflictDetails] = useState<Record<string, WebDavJsonDiffSummary | null>>({});
+  const [conflictDetails, setConflictDetails] = useState<
+    Record<string, WebDavJsonDiffSummary | null>
+  >({});
 
   useEffect(() => {
     const handleCustomEvent = (event: CustomEvent) => {
@@ -431,7 +433,9 @@ export const WebDavCenterWindow = () => {
     const merged = Array.from(byHash.values());
     // Part 4.3：手动上传路径同样剥离设备本地字段（旧远端条目可能残留
     // 其他设备的 filePath；本机内存条目可能带 coverImageUrl）。
-    const body = new TextEncoder().encode(stripDeviceLocalFieldsFromJsonText(JSON.stringify(merged)));
+    const body = new TextEncoder().encode(
+      stripDeviceLocalFieldsFromJsonText(JSON.stringify(merged)),
+    );
     const put = await client.put(`/${getRemoteLibraryPath()}`, body, {
       contentType: 'application/json; charset=utf-8',
     });
@@ -664,7 +668,10 @@ export const WebDavCenterWindow = () => {
           removeConflict(conflict.profileId, conflict.path);
           showToast(_('冲突已解决'), 'success');
         } else {
-          showToast(result?.message ? `${_('冲突解决失败')}：${result.message}` : _('冲突解决失败'), 'error');
+          showToast(
+            result?.message ? `${_('冲突解决失败')}：${result.message}` : _('冲突解决失败'),
+            'error',
+          );
         }
       } catch {
         showToast(_('冲突解决失败'), 'error');
@@ -1245,7 +1252,9 @@ export const WebDavCenterWindow = () => {
                               </div>
                             ) : null}
                             {details.truncated > 0 ? (
-                              <div>{_('还有 {{count}} 项未展示', { count: details.truncated })}</div>
+                              <div>
+                                {_('还有 {{count}} 项未展示', { count: details.truncated })}
+                              </div>
                             ) : null}
                           </div>
                         )}
@@ -1255,7 +1264,9 @@ export const WebDavCenterWindow = () => {
                           </div>
                         ) : null}
                         <div className='flex items-center justify-end gap-2 pt-2'>
-                          {resolving ? <span className='text-base-content/50 text-xs'>{_('解决中…')}</span> : null}
+                          {resolving ? (
+                            <span className='text-base-content/50 text-xs'>{_('解决中…')}</span>
+                          ) : null}
                           <button
                             className='btn btn-ghost btn-xs'
                             disabled={resolving || isSyncing}

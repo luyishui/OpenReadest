@@ -6,16 +6,15 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   title?: string;
 }
 
-const Link: React.FC<LinkProps> = ({ href, children, target = '_blank', rel = 'noopener noreferrer', ...props }) => {
+const Link: React.FC<LinkProps> = ({
+  href,
+  children,
+  target = '_blank',
+  rel = 'noopener noreferrer',
+  ...props
+}) => {
   const handleClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (
-      e.defaultPrevented ||
-      e.button !== 0 ||
-      e.metaKey ||
-      e.ctrlKey ||
-      e.shiftKey ||
-      e.altKey
-    ) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       return;
     }
 

@@ -1,11 +1,7 @@
 import { VerifiedIAP } from '../types';
-import {
-  VerificationResult,
-  VerifyPurchaseParams,
-} from './verifier';
+import { VerificationResult, VerifyPurchaseParams } from './verifier';
 
-const disabledPaymentError = () =>
-  new Error('OpenReadest has disabled in-app purchase services.');
+const disabledPaymentError = () => new Error('OpenReadest has disabled in-app purchase services.');
 
 export type VerifiedPurchase = VerifiedIAP & {
   purchaseToken: string;

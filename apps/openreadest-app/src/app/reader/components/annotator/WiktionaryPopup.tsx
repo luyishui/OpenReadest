@@ -63,9 +63,7 @@ const WikipediaSection: React.FC<{ summary: WikipediaSummary }> = ({ summary }) 
     <section className='mt-4'>
       <hgroup>
         <h2 className='text-base font-bold'>{summary.title}</h2>
-        {summary.description && (
-          <p className='text-sm italic opacity-75'>{summary.description}</p>
-        )}
+        {summary.description && <p className='text-sm italic opacity-75'>{summary.description}</p>}
       </hgroup>
       {summary.extractHtml && (
         <div
@@ -108,7 +106,7 @@ const WebLinksSection: React.FC<{ word: string; lang?: string }> = ({ word, lang
           <Link
             key={link.id}
             href={link.href}
-            className='btn btn-ghost btn-sm border border-base-300 normal-case'
+            className='btn btn-ghost btn-sm border-base-300 border normal-case'
           >
             {link.name}
           </Link>
@@ -185,7 +183,11 @@ const WiktionaryPopup: React.FC<WiktionaryPopupProps> = ({
               return;
             }
             if (byPinyin.candidates.length > 0) {
-              setLookup({ state: 'suggestions', suggestions: byPinyin.candidates, viaPinyin: true });
+              setLookup({
+                state: 'suggestions',
+                suggestions: byPinyin.candidates,
+                viaPinyin: true,
+              });
               return;
             }
           }
@@ -214,7 +216,11 @@ const WiktionaryPopup: React.FC<WiktionaryPopupProps> = ({
           wiktionaryOutcome.status === 'fulfilled' ? wiktionaryOutcome.value : [];
         const wikipediaSummary = wikipedia.status === 'fulfilled' ? wikipedia.value : null;
         if (wiktionaryResults.length > 0) {
-          setLookup({ state: 'wiktionary', results: wiktionaryResults, wikipedia: wikipediaSummary });
+          setLookup({
+            state: 'wiktionary',
+            results: wiktionaryResults,
+            wikipedia: wikipediaSummary,
+          });
         } else {
           setLookup({
             state: 'fallback',
@@ -238,9 +244,7 @@ const WiktionaryPopup: React.FC<WiktionaryPopupProps> = ({
     if (!container || lookup.state !== 'wiktionary') return;
 
     const handleDictionaryLink = (event: MouseEvent) => {
-      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>(
-        'a[rel="mw:WikiLink"]',
-      );
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[rel="mw:WikiLink"]');
       const title = link?.getAttribute('title');
       if (!title) return;
       event.preventDefault();
@@ -417,8 +421,7 @@ const WiktionaryPopup: React.FC<WiktionaryPopupProps> = ({
               <div className='flex h-full flex-col items-center justify-center gap-3 text-center'>
                 <h1 className='text-lg font-bold'>{_('Not found')}</h1>
                 <p className='text-sm opacity-75'>
-                  {_('No exact match for')}{' '}
-                  <span className='font-semibold'>{lookupWord}</span>
+                  {_('No exact match for')} <span className='font-semibold'>{lookupWord}</span>
                 </p>
                 {lookup.viaPinyin && (
                   <p className='text-xs opacity-60'>{_('Searched by pinyin')}</p>

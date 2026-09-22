@@ -15,7 +15,8 @@ export const validateWebDavProfileName = (
 ) => {
   const normalized = normalizeWebDavProfileName(name);
   if (!normalized) return { ok: false as const, name: normalized, error: '备注名不能为空' };
-  if (normalized.length > 32) return { ok: false as const, name: normalized, error: '备注名长度不能超过 32 个字符' };
+  if (normalized.length > 32)
+    return { ok: false as const, name: normalized, error: '备注名长度不能超过 32 个字符' };
   if (!WEB_DAV_PROFILE_NAME_PATTERN.test(normalized))
     return { ok: false as const, name: normalized, error: '备注名仅支持中文、英文、数字及下划线' };
   const duplicates = usedNames.filter((n) => n === normalized);
@@ -36,4 +37,3 @@ export const getUniqueWebDavProfileName = (baseName: string, existingNames: stri
   }
   return 'WebDAV';
 };
-

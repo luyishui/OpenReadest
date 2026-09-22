@@ -18,7 +18,10 @@ const hasElementByLocalName = (el: Element, localName: string): boolean => {
   return el.getElementsByTagNameNS('*', localName).length > 0;
 };
 
-export const parsePropfindResponse = (xmlText: string, options?: { baseUrl?: string; rootPath?: string }) => {
+export const parsePropfindResponse = (
+  xmlText: string,
+  options?: { baseUrl?: string; rootPath?: string },
+) => {
   const baseUrl = options?.baseUrl;
   const rootPath = options?.rootPath ? normalizeDavPath(options.rootPath) : '';
   const parser = new DOMParser();
@@ -31,17 +34,22 @@ export const parsePropfindResponse = (xmlText: string, options?: { baseUrl?: str
     if (!href) continue;
     const pathname = decodeHrefPathname(href, baseUrl);
     const normalizedPath = normalizeDavPath(pathname);
-    const relative = rootPath && normalizedPath.startsWith(`${rootPath}/`)
-      ? normalizedPath.slice(rootPath.length)
-      : rootPath === normalizedPath
-        ? '/'
-        : normalizedPath;
+    const relative =
+      rootPath && normalizedPath.startsWith(`${rootPath}/`)
+        ? normalizedPath.slice(rootPath.length)
+        : rootPath === normalizedPath
+          ? '/'
+          : normalizedPath;
     const propstat = getFirstChildByLocalName(response, 'propstat');
     const prop = propstat ? getFirstChildByLocalName(propstat, 'prop') : null;
-    const isCollection = prop ? hasElementByLocalName(prop, 'collection') : normalizedPath.endsWith('/');
+    const isCollection = prop
+      ? hasElementByLocalName(prop, 'collection')
+      : normalizedPath.endsWith('/');
     const etag = prop ? getTextContentByLocalName(prop, 'getetag') : undefined;
     const lastModified = prop ? getTextContentByLocalName(prop, 'getlastmodified') : undefined;
-    const contentLengthText = prop ? getTextContentByLocalName(prop, 'getcontentlength') : undefined;
+    const contentLengthText = prop
+      ? getTextContentByLocalName(prop, 'getcontentlength')
+      : undefined;
     const contentLength = contentLengthText ? Number.parseInt(contentLengthText, 10) : undefined;
 
     resources.push({
@@ -77,4 +85,3 @@ export const parseQuotaFromPropfindResponse = (xmlText: string): WebDavQuota => 
     availableBytes: Number.isFinite(availableBytes) ? availableBytes : undefined,
   };
 };
-
