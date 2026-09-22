@@ -196,11 +196,16 @@ jobs:
           distribution: zulu
           java-version: 17
 
-      - name: setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # android-actions/setup-android@v3 insists on a cmdline-tools build the
+      # current ubuntu-latest image no longer matches, then fails installing the
+      # deprecated 'tools' package. The runner already ships a working
+      # sdkmanager under $ANDROID_HOME/cmdline-tools/latest, so accept licenses
+      # and install the NDK directly.
       - name: install NDK
-        run: sdkmanager "ndk;28.2.13676358"
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "ndk;28.2.13676358"
 
       - name: install Rust stable with Android targets
         uses: dtolnay/rust-toolchain@stable
