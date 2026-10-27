@@ -10,6 +10,7 @@ import { useEinkMode } from '@/hooks/useEinkMode';
 import { getStyles } from '@/utils/style';
 import { getMaxInlineSize } from '@/utils/config';
 import { saveSysSettings, saveViewSettings } from '@/helpers/settings';
+import { isReadingStatsEnabled } from '@/services/statistics/remainingTime';
 import { SettingsPanelPanelProp } from './SettingsDialog';
 import { annotationToolQuickActions } from '@/app/reader/components/annotator/AnnotationTools';
 import NumberInput from './NumberInput';
@@ -46,6 +47,7 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
   const [isColorEink, setIsColorEink] = useState(viewSettings.isColorEink);
   const [autoScreenBrightness, setAutoScreenBrightness] = useState(settings.autoScreenBrightness);
   const [allowScript, setAllowScript] = useState(viewSettings.allowScript);
+  const [readingStatsEnabled, setReadingStatsEnabled] = useState(isReadingStatsEnabled(settings));
 
   const resetToDefaults = useResetViewSettings();
 
@@ -158,6 +160,12 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
     saveSysSettings(envConfig, 'autoScreenBrightness', autoScreenBrightness);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoScreenBrightness]);
+
+  useEffect(() => {
+    if (readingStatsEnabled === isReadingStatsEnabled(settings)) return;
+    saveSysSettings(envConfig, 'readingStatsEnabled', readingStatsEnabled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingStatsEnabled]);
 
   useEffect(() => {
     if (viewSettings.allowScript === allowScript) return;
@@ -402,6 +410,28 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
           </div>
         </div>
       )}
+
+      <div className='w-full'>
+        <h2 className='mb-2 font-medium'>{_('阅读统计')}</h2>
+        <div className='card border-base-200 bg-base-100 border shadow'>
+          <div className='divide-base-200 divide-y'>
+            <div className='config-item !h-16'>
+              <div className='flex flex-col gap-1'>
+                <span className=''>{_('启用阅读统计')}</span>
+                <span className='text-xs'>
+                  {_('记录阅读时长与翻页，用于统计与剩余时间估算')}
+                </span>
+              </div>
+              <input
+                type='checkbox'
+                className='toggle'
+                checked={readingStatsEnabled}
+                onChange={() => setReadingStatsEnabled(!readingStatsEnabled)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className='w-full'>
         <h2 className='mb-2 font-medium'>{_('Security')}</h2>

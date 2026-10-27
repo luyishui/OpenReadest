@@ -1,8 +1,12 @@
 import withSerwistInit from '@serwist/next';
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const isDev = process.env['NODE_ENV'] === 'development';
 const appPlatform = process.env['NEXT_PUBLIC_APP_PLATFORM'];
+const tursoGuestJs = './src-tauri/plugins/tauri-plugin-turso/guest-js/index.ts';
+const tursoGuestJsAbs = path.resolve(path.dirname(fileURLToPath(import.meta.url)), tursoGuestJs);
 
 if (isDev) {
   const { initOpenNextCloudflareForDev } = await import('@opennextjs/cloudflare');
@@ -27,7 +31,24 @@ const nextConfig = {
   assetPrefix: '',
   reactStrictMode: true,
   serverExternalPackages: ['isows'],
-  turbopack: {},
+  webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      // tauri-plugin-turso guest bindings are consumed from source (same path as tsconfig).
+      'tauri-plugin-turso': tursoGuestJsAbs,
+      // Tauri builds use the native turso plugin; keep the WASM engine out of the bundle.
+      ...(appPlatform !== 'web' ? { '@tursodatabase/database-wasm': false } : {}),
+      // The WASM connector is browser-only; never bundle it into the web server build.
+      ...(isServer && appPlatform === 'web' ? { '@readest/turso-database-wasm/webpack': false } : {}),
+    };
+    return config;
+  },
+  turbopack: {
+    resolveAlias: {
+      'tauri-plugin-turso': tursoGuestJs,
+      ...(appPlatform !== 'web' ? { '@tursodatabase/database-wasm': './src/utils/stub.ts' } : {}),
+    },
+  },
   transpilePackages: !isDev
     ? [
         'i18next-browser-languagedetector',

@@ -7,3 +7,6 @@
 [submodule "packages/simplecc-wasm"]
 	path = packages/simplecc-wasm
 	url = https://github.com/readest/simplecc-wasm.git
+[submodule "apps/openreadest-app/src-tauri/plugins/tauri-plugin-turso"]
+	path = apps/openreadest-app/src-tauri/plugins/tauri-plugin-turso
+	url = https://github.com/readest/tauri-plugin-turso.git

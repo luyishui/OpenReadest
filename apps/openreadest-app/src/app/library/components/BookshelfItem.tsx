@@ -79,6 +79,7 @@ interface BookshelfItemProps {
   isSelectMode: boolean;
   itemSelected: boolean;
   transferProgress: number | null;
+  medianPageSecs: number | null;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   toggleSelection: (hash: string) => void;
   handleGroupBooks: () => void;
@@ -99,6 +100,7 @@ const BookshelfItem: React.FC<BookshelfItemProps> = ({
   isSelectMode,
   itemSelected,
   transferProgress,
+  medianPageSecs,
   setLoading,
   toggleSelection,
   handleGroupBooks,
@@ -381,6 +383,7 @@ const BookshelfItem: React.FC<BookshelfItemProps> = ({
               isSelectMode={isSelectMode}
               bookSelected={itemSelected}
               transferProgress={transferProgress}
+              medianPageSecs={medianPageSecs}
               handleBookUpload={handleBookUpload}
               handleBookDownload={handleBookDownload}
               showBookDetailsModal={showBookDetailsModal}

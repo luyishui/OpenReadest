@@ -72,6 +72,7 @@ export const DEFAULT_SYSTEM_SETTINGS: Partial<SystemSettings> = {
   autoImportBooksOnOpen: false,
   telemetryEnabled: false,
   discordRichPresenceEnabled: false,
+  readingStatsEnabled: true,
   libraryViewMode: 'grid',
   librarySortBy: 'updated',
   librarySortAscending: false,

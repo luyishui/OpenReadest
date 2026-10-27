@@ -8,6 +8,9 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { formatNumber, formatProgress } from '@/utils/progress';
 import { saveViewSettings } from '@/helpers/settings';
+import { formatDuration } from '@/app/library/components/stats/format';
+import { useMedianPageDurationSecs } from '@/hooks/useMedianPageDurationSecs';
+import { estimateRemainingSeconds } from '@/services/statistics/remainingTime';
 
 interface PageInfoProps {
   bookKey: string;
@@ -60,7 +63,9 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
       })
     : '';
   const { page = 0, pages = 0 } = view?.renderer || {};
-  const pageLeft =
+  // Page-count keys are Trans markup in most locales ("<0>{{count}}</0><1> pages left</1>"),
+  // but this footer renders plain text, so drop the <N> markers for display and aria-label.
+  const pageLeft = (
     pages - 1 > page
       ? localize
         ? _('{{number}} pages left in chapter', {
@@ -69,7 +74,28 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
         : _('{{count}} pages left in chapter', {
             count: pages - page - 1,
           })
+      : ''
+  ).replace(/<\/?\d+>/g, '');
+
+  // Whole-book remaining time at the reader's own median page pace; empty when
+  // reading stats are off or there is too little data. Page-unit contract: the
+  // median is per page_stat_data.page, which must be this same progress index
+  // (isFixedLayout ? section : pageinfo). The coarse tick re-reads the median
+  // every 20 progress units so the pace is not frozen at the value from open.
+  const medianPageSecs = useMedianPageDurationSecs(
+    bookData?.book?.hash,
+    progress ? Math.floor(progress.current / 20) : undefined,
+  );
+  const bookRemainingSecs = progress
+    ? estimateRemainingSeconds(progress.total - progress.current - 1, medianPageSecs)
+    : null;
+  const bookTimeLeft =
+    bookRemainingSecs !== null
+      ? _('全书还剩 {{duration}}', {
+          duration: formatDuration(bookRemainingSecs, _, (n) => formatNumber(n, localize, lang)),
+        })
       : '';
+  const chapterLeft = viewSettings.showRemainingTime ? timeLeft : pageLeft;
 
   const [progressInfoMode, setProgressInfoMode] = useState(viewSettings.progressInfoMode);
 
@@ -135,8 +161,8 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
               total: progress.total,
             })
           : '',
-        timeLeft,
-        pageLeft,
+        chapterLeft,
+        bookTimeLeft,
       ]
         .filter(Boolean)
         .join(', ')}
@@ -166,13 +192,19 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
       >
         {(progressInfoMode === 'all' || progressInfoMode === 'remaining') && (
           <>
-            {viewSettings.showRemainingTime ? (
-              <span className={clsx('text-start', !isVertical && 'min-w-0 flex-1 truncate')}>
-                {timeLeft}
-              </span>
-            ) : viewSettings.showRemainingPages ? (
-              <span className={clsx('text-start', !isVertical && 'min-w-0 flex-1 truncate')}>
-                {pageLeft}
+            {viewSettings.showRemainingTime || viewSettings.showRemainingPages ? (
+              <span className={clsx('text-start', !isVertical && 'flex min-w-0 flex-1 gap-x-1')}>
+                <span className={clsx(!isVertical && 'min-w-0 truncate')}>{chapterLeft}</span>
+                {bookTimeLeft ? (
+                  // Own non-shrinking span: on narrow footers the chapter text truncates first,
+                  // never the whole-book estimate.
+                  <span
+                    className={clsx('book-time-left', !isVertical && 'shrink-0 whitespace-nowrap')}
+                  >
+                    {chapterLeft ? ' · ' : ''}
+                    {bookTimeLeft}
+                  </span>
+                ) : null}
               </span>
             ) : null}
           </>

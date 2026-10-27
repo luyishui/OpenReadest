@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import * as React from 'react';
 import { MdChevronRight } from 'react-icons/md';
-import { useState, useRef, useEffect, Suspense, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { ReadonlyURLSearchParams, useRouter, useSearchParams } from 'next/navigation';
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from 'overlayscrollbars-react';
 import 'overlayscrollbars/overlayscrollbars.css';
@@ -70,8 +70,16 @@ import ModalPortal from '@/components/ModalPortal';
 import TransferQueuePanel from './components/TransferQueuePanel';
 import WebDavCenterWindow from './components/WebDavCenterWindow';
 import WebDavAutoSyncRunner from './components/WebDavAutoSyncRunner';
+import { ReadingStatsPill } from './components/stats/ReadingStatsPill';
+import { createGatedStatsDataSource } from './components/stats/statsDataSource';
+import { StatisticsDb } from '@/services/statistics/statisticsDb';
+import { getMedianPageDurationsByMd5 } from '@/services/statistics/statisticsQueries';
+import { isReadingStatsEnabled } from '@/services/statistics/remainingTime';
 
 const LEGACY_DATA_PROMPT_SESSION_KEY = 'openreadest:legacy-data-prompted';
+
+// Shared empty result so cards keep a stable prop while stats are off or loading.
+const NO_MEDIANS: ReadonlyMap<string, number> = new Map();
 
 const LibraryPageWithSearchParams = () => {
   const searchParams = useSearchParams();
@@ -122,6 +130,69 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
 
   const iconSize = useResponsiveSize(18);
   const viewSettings = settings.globalViewSettings;
+  const statsEnabled = isReadingStatsEnabled(settings);
+  // Reading stats read the shared per-tab statistics.db connection (never a second open).
+  // Switch off: no data source, so no pill mounts and statistics.db is never opened.
+  const statsDataSource = useMemo(
+    () =>
+      createGatedStatsDataSource(
+        appService,
+        statsEnabled,
+        async (service) => (await StatisticsDb.open(service)).database,
+      ),
+    [appService, statsEnabled],
+  );
+  // Library books by md5 so stats rows and the detail header draw the same cover the grid does.
+  const statsBooksByMd5 = useMemo(
+    () =>
+      new Map(libraryBooks.filter((book) => !book.deletedAt).map((book) => [book.hash, book] as const)),
+    [libraryBooks],
+  );
+  // Keyed on the sorted hashes so progress writes don't rebuild the Set and
+  // refire the stats overview queries while the panel is open.
+  const libraryMd5Key = useMemo(
+    () =>
+      libraryBooks
+        .filter((book) => !book.deletedAt)
+        .map((book) => book.hash)
+        .sort()
+        .join('\n'),
+    [libraryBooks],
+  );
+  const libraryMd5s = useMemo(
+    () => new Set(libraryMd5Key ? libraryMd5Key.split('\n') : []),
+    [libraryMd5Key],
+  );
+  // Remaining-time pace for every card from ONE batched query on the shared connection (no
+  // per-card queries). Re-run when the md5 set changes or any book's updatedAt moves.
+  const libraryUpdatedAt = useMemo(
+    () => libraryBooks.reduce((max, book) => Math.max(max, book.updatedAt ?? 0), 0),
+    [libraryBooks],
+  );
+  const [medianResult, setMedianResult] = useState<{
+    key: string;
+    medians: ReadonlyMap<string, number>;
+  } | null>(null);
+  useEffect(() => {
+    if (!appService || !statsEnabled || !libraryMd5Key) return;
+    let cancelled = false;
+    const load = async () => {
+      let medians: ReadonlyMap<string, number> = NO_MEDIANS;
+      try {
+        const stats = await StatisticsDb.open(appService);
+        medians = await getMedianPageDurationsByMd5(stats.database, libraryMd5Key.split('\n'));
+      } catch {
+        // Stats storage unavailable (e.g. no OPFS): show no estimates.
+      }
+      if (!cancelled) setMedianResult({ key: libraryMd5Key, medians });
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [appService, statsEnabled, libraryMd5Key, libraryUpdatedAt]);
+  const medianPageSecsByMd5 =
+    statsEnabled && medianResult?.key === libraryMd5Key ? medianResult.medians : NO_MEDIANS;
   const demoBooks = useDemoBooks();
   const osRef = useRef<OverlayScrollbarsComponentRef>(null);
   const containerRef: React.MutableRefObject<HTMLDivElement | null> = useRef(null);
@@ -171,7 +242,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
     if (settings.alwaysOnTop) {
       tauriHandleSetAlwaysOnTop(settings.alwaysOnTop);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.alwaysOnTop]);
 
   useEffect(() => {
@@ -864,6 +934,7 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
               <DropIndicator />
               <Bookshelf
                 libraryBooks={libraryBooks}
+                medianPageSecsByMd5={medianPageSecsByMd5}
                 isSelectMode={isSelectMode}
                 isSelectAll={isSelectAll}
                 isSelectNone={isSelectNone}
@@ -920,6 +991,14 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
       <SponsorWindow />
       <UpdateWindow />
       <MigrateDataWindow />
+      {statsDataSource && (
+        <ReadingStatsPill
+          dataSource={statsDataSource}
+          libraryMd5s={libraryMd5s}
+          booksByMd5={statsBooksByMd5}
+          isEink={!!viewSettings?.isEink}
+        />
+      )}
       {isSettingsDialogOpen && <SettingsDialog bookKey={''} />}
       {showCatalogManager && <CatalogDialog onClose={handleDismissOPDSDialog} />}
       <Toast />

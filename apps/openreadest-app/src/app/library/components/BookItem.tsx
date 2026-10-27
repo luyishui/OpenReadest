@@ -18,6 +18,7 @@ interface BookItemProps {
   isSelectMode: boolean;
   bookSelected: boolean;
   transferProgress: number | null;
+  medianPageSecs: number | null;
   handleBookUpload: (book: Book) => void;
   handleBookDownload: (book: Book, options?: { redownload?: boolean; queued?: boolean }) => void;
   showBookDetailsModal: (book: Book) => void;
@@ -30,6 +31,7 @@ const BookItem: React.FC<BookItemProps> = ({
   isSelectMode,
   bookSelected,
   transferProgress,
+  medianPageSecs,
   handleBookUpload,
   handleBookDownload,
   showBookDetailsModal,
@@ -115,7 +117,7 @@ const BookItem: React.FC<BookItemProps> = ({
             minHeight: `${iconSize15}px`,
           }}
         >
-          {book.progress && <ReadingProgress book={book} />}
+          {book.progress && <ReadingProgress book={book} medianPageSecs={medianPageSecs} />}
           <div className='flex items-center justify-center gap-x-2'>
             {!appService?.isMobile && (
               <button

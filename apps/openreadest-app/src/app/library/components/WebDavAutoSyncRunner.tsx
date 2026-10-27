@@ -9,6 +9,8 @@ import { syncWebDavSelection } from '@/services/webdav/sync/engine';
 import { computeLocalFingerprint } from '@/services/webdav/sync/fingerprint';
 import { mergeWebDavConflictLists } from '@/services/webdav/sync/conflicts';
 import { getLocalLibraryPath } from '@/services/webdav/sync/paths';
+import { useSettingsStore } from '@/store/settingsStore';
+import { isReadingStatsEnabled } from '@/services/statistics/remainingTime';
 import { eventDispatcher } from '@/utils/event';
 
 const shouldRun = () => {
@@ -73,7 +75,11 @@ const WebDavAutoSyncRunner = () => {
         const { failures, conflicts } = await syncWebDavSelection(
           appService,
           profile,
-          { books, includeLibrary: true },
+          {
+            books,
+            includeLibrary: true,
+            includeStatistics: isReadingStatsEnabled(useSettingsStore.getState().settings),
+          },
           {
             onProgress: (p) => useWebDavStore.getState().setProgress(p),
             onLog: (l) => useWebDavStore.getState().addLog(l),

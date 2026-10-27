@@ -30,6 +30,8 @@ import {
   READEST_WEBDAV_ROOT_DIRNAME,
   READEST_WEBDAV_SYSTEM_DIR,
 } from './paths';
+import { StatisticsDb } from '@/services/statistics/statisticsDb';
+import { STATISTICS_SYNC_KEY, syncStatisticsWithWebDav } from '@/services/statistics/statisticsSync';
 
 type SyncCallbacks = {
   onProgress?: (progress: WebDavSyncProgress) => void;
@@ -366,6 +368,11 @@ export const syncWebDavSelection = async (
     includeConfig?: boolean;
     includeCovers?: boolean;
     includeLibrary?: boolean;
+    /**
+     * 阅读统计（System/statistics.json）行级合并同步，默认开启；调用方按
+     * 「启用阅读统计」设置传入 false 即跳过。dryRun 时不同步。
+     */
+    includeStatistics?: boolean;
     dryRun?: boolean;
     /**
      * 远端探测兜底间隔（毫秒）。默认 DEFAULT_REMOTE_PROBE_INTERVAL_MS（30 分钟）；
@@ -397,6 +404,7 @@ export const syncWebDavSelection = async (
   const includeBookFiles = options.includeBookFiles ?? true;
   const includeConfig = options.includeConfig ?? true;
   const includeCovers = options.includeCovers ?? true;
+  const includeStatistics = (options.includeStatistics ?? true) && !options.dryRun;
 
   // 书目文件条目额外携带该书在本地书架（library.json）中的存活状态：
   // 「移除设备副本」（deleteAction:'local'）只删 bookFile、保留书架活条目，
@@ -445,7 +453,7 @@ export const syncWebDavSelection = async (
   }
 
   const progress: WebDavSyncProgress = {
-    totalItems: items.length,
+    totalItems: items.length + (includeStatistics ? 1 : 0),
     completedItems: 0,
     failedItems: 0,
   };
@@ -965,6 +973,28 @@ export const syncWebDavSelection = async (
       }
     }
 
+    progress.completedItems += 1;
+    callbacks?.onProgress?.({ ...progress });
+  }
+
+  // 阅读统计不走文件级指纹/冲突流程：拉取远端快照行级合并进本地库，再带
+  // If-Match 推回合并结果（412 即重新拉取合并），多设备并发不丢行。
+  if (includeStatistics && !control?.shouldCancel?.()) {
+    progress.currentPath = STATISTICS_SYNC_KEY;
+    progress.currentDirection = 'upload';
+    callbacks?.onProgress?.({ ...progress });
+    try {
+      const result = await syncStatisticsWithWebDav(client, await StatisticsDb.open(appService));
+      if (result.status === 'failed') {
+        log('upload', STATISTICS_SYNC_KEY, 'failed', result.error);
+      } else if (result.status === 'pushed') {
+        log('upload', STATISTICS_SYNC_KEY, 'completed', '已合并阅读统计');
+      } else {
+        log('upload', STATISTICS_SYNC_KEY, 'skipped', '无需同步');
+      }
+    } catch (error) {
+      log('upload', STATISTICS_SYNC_KEY, 'failed', (error as Error).message || '阅读统计同步失败');
+    }
     progress.completedItems += 1;
     callbacks?.onProgress?.({ ...progress });
   }

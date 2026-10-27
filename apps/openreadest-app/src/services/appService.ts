@@ -11,6 +11,8 @@ import {
   SelectDirectoryMode,
 } from '@/types/system';
 import { FileSystem, BaseDir, DeleteAction } from '@/types/system';
+import { DatabaseOpts, DatabaseService } from '@/types/database';
+import type { SchemaType } from '@/services/database/migrate';
 import {
   Book,
   BookConfig,
@@ -120,6 +122,12 @@ export abstract class BaseAppService implements AppService {
   protected abstract fs: FileSystem;
   protected abstract resolvePath(fp: string, base: BaseDir): ResolvedPath;
 
+  abstract openDatabase(
+    schema: SchemaType,
+    path: string,
+    base: BaseDir,
+    opts?: DatabaseOpts,
+  ): Promise<DatabaseService>;
   abstract init(): Promise<void>;
   abstract setCustomRootDir(customRootDir: string): Promise<void>;
   abstract selectDirectory(mode: SelectDirectoryMode): Promise<string>;

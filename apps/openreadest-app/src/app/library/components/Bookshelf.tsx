@@ -40,6 +40,7 @@ interface BookshelfProps {
   handleShowDetailsBook: (book: Book) => void;
   handlePushLibrary: () => Promise<void>;
   booksTransferProgress: { [key: string]: number | null };
+  medianPageSecsByMd5: ReadonlyMap<string, number>;
 }
 
 const Bookshelf: React.FC<BookshelfProps> = ({
@@ -55,6 +56,7 @@ const Bookshelf: React.FC<BookshelfProps> = ({
   handleShowDetailsBook,
   handlePushLibrary,
   booksTransferProgress,
+  medianPageSecsByMd5,
 }) => {
   const _ = useTranslation();
   const router = useRouter();
@@ -322,6 +324,9 @@ const Bookshelf: React.FC<BookshelfProps> = ({
             handleShowDetailsBook={handleShowDetailsBook}
             transferProgress={
               'hash' in item ? booksTransferProgress[(item as Book).hash] || null : null
+            }
+            medianPageSecs={
+              'hash' in item ? (medianPageSecsByMd5.get((item as Book).hash) ?? null) : null
             }
           />
         ))}

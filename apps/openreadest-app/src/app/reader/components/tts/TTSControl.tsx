@@ -12,6 +12,7 @@ import { proofreadTransformer } from '@/services/transformers/proofread';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { TTSController, SILENCE_DATA, TTSMark, TTSHighlightOptions } from '@/services/tts';
+import { useTtsStatsRecorder } from '@/hooks/useTtsStatsRecorder';
 import { getMediaSession, TauriMediaSession } from '@/libs/mediaSession';
 import { getPopupPosition, Position } from '@/utils/sel';
 import { eventDispatcher } from '@/utils/event';
@@ -75,6 +76,9 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
   const mediaSessionRef = useRef<TauriMediaSession | MediaSession | null>(null);
   const [ttsController, setTtsController] = useState<TTSController | null>(null);
   const [ttsClientsInited, setTtsClientsInitialized] = useState(false);
+
+  // Reading statistics: time spent listening counts as reading (P3).
+  useTtsStatsRecorder(bookKey, isPlaying, ttsController);
 
   // this enables WebAudio to play even when the mute toggle switch is ON
   const unblockAudio = () => {
@@ -436,6 +440,8 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
       setTtsClientsInitialized(true);
       setTTSEnabled(bookKey, true);
     } catch (error) {
+      // Never leave the stats recorder (and the muted visual tracker) running.
+      setIsPlaying(false);
       eventDispatcher.dispatch('toast', {
         message: _('TTS not supported for this document'),
         type: 'error',

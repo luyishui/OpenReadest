@@ -15,6 +15,8 @@ import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useWebDavStore, loadWebDavStoreFromStorage } from '@/store/webdavStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { isReadingStatsEnabled } from '@/services/statistics/remainingTime';
 import Dialog from '@/components/Dialog';
 import { eventDispatcher } from '@/utils/event';
 import { WebDavClient } from '@/services/webdav/client/WebDavClient';
@@ -574,6 +576,7 @@ export const WebDavCenterWindow = () => {
         {
           books: pickBooks,
           includeLibrary: false,
+          includeStatistics: isReadingStatsEnabled(useSettingsStore.getState().settings),
         },
         {
           onProgress: (p) => setProgress(p),

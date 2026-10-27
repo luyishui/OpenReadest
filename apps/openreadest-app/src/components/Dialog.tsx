@@ -16,6 +16,8 @@ const VELOCITY_THRESHOLD = 0.5;
 const SNAP_THRESHOLD = 0.2;
 const DIALOG_HISTORY_STATE_KEY = '__dialogToken';
 
+type PendingHistoryRelease = { timer: number; token: string };
+
 const shouldRestoreFocus = (element: HTMLElement | null) => {
   if (!element || !element.isConnected) return false;
 
@@ -60,6 +62,7 @@ const Dialog: React.FC<DialogProps> = ({
   const onCloseRef = useRef(onClose);
   const historyTokenRef = useRef<string | null>(null);
   const historyBackRequestedRef = useRef(false);
+  const pendingHistoryCleanupRef = useRef<PendingHistoryRelease | null>(null);
   const iconSize22 = useResponsiveSize(22);
   const isMobile = window.innerWidth < 640 || window.innerHeight < 640;
 
@@ -95,16 +98,42 @@ const Dialog: React.FC<DialogProps> = ({
   useEffect(() => {
     if (!isOpen || !isMobile || !id) return;
 
-    const historyToken = `${id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-    historyTokenRef.current = historyToken;
-    historyBackRequestedRef.current = false;
-    window.history.pushState(
-      {
-        ...(window.history.state ?? {}),
-        [DIALOG_HISTORY_STATE_KEY]: historyToken,
-      },
-      '',
-    );
+    const releaseHistoryEntry = (token: string) => {
+      if (historyTokenRef.current !== token) return;
+      historyTokenRef.current = null;
+      if (window.history.state?.[DIALOG_HISTORY_STATE_KEY] === token) {
+        window.history.back();
+      }
+    };
+
+    // A cleanup immediately followed by a re-run (React StrictMode's double
+    // mount) must not pop the entry: the deferred release is cancelled and the
+    // still-current entry is adopted instead of pushing a second one.
+    const pending = pendingHistoryCleanupRef.current;
+    pendingHistoryCleanupRef.current = null;
+    if (pending) clearTimeout(pending.timer);
+    const canAdopt =
+      !!pending &&
+      pending.token.startsWith(id + ':') &&
+      historyTokenRef.current === pending.token &&
+      window.history.state?.[DIALOG_HISTORY_STATE_KEY] === pending.token;
+    if (pending && !canAdopt) releaseHistoryEntry(pending.token);
+
+    const historyToken =
+      pending && canAdopt
+        ? pending.token
+        : id + ':' + Date.now() + ':' + Math.random().toString(36).slice(2);
+    if (!canAdopt) {
+      historyTokenRef.current = historyToken;
+      historyBackRequestedRef.current = false;
+      window.history.pushState(
+        {
+          ...(window.history.state ?? {}),
+          [DIALOG_HISTORY_STATE_KEY]: historyToken,
+        },
+        '',
+      );
+    }
 
     const handlePopState = () => {
       if (historyTokenRef.current !== historyToken) return;
@@ -117,16 +146,18 @@ const Dialog: React.FC<DialogProps> = ({
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      if (historyTokenRef.current === historyToken) {
+      if (historyTokenRef.current !== historyToken) return;
+      if (historyBackRequestedRef.current) {
         historyTokenRef.current = null;
-        if (historyBackRequestedRef.current) {
-          historyBackRequestedRef.current = false;
-          return;
-        }
-        if (window.history.state?.[DIALOG_HISTORY_STATE_KEY] === historyToken) {
-          window.history.back();
-        }
+        historyBackRequestedRef.current = false;
+        return;
       }
+      const timer = window.setTimeout(() => {
+        if (pendingHistoryCleanupRef.current?.timer !== timer) return;
+        pendingHistoryCleanupRef.current = null;
+        releaseHistoryEntry(historyToken);
+      }, 0);
+      pendingHistoryCleanupRef.current = { timer, token: historyToken };
     };
   }, [id, isMobile, isOpen]);
 

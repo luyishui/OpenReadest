@@ -69,6 +69,7 @@ export interface SystemSettings {
   savedBookCoverForLockScreenPath: string;
   telemetryEnabled: boolean;
   discordRichPresenceEnabled: boolean;
+  readingStatsEnabled: boolean;
   libraryViewMode: LibraryViewModeType;
   librarySortBy: LibrarySortByType;
   librarySortAscending: boolean;

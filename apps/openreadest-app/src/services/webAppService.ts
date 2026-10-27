@@ -3,6 +3,10 @@ import { getOSPlatform, isValidURL } from '@/utils/misc';
 import { RemoteFile } from '@/utils/file';
 import { isPWA } from './environment';
 import { BaseAppService } from './appService';
+import { DatabaseOpts, DatabaseService } from '@/types/database';
+import { SchemaType, migrate } from './database/migrate';
+import { getMigrations, getSchemaUserVersion } from './database/migrations';
+import { WebDatabaseService } from './database/webDatabaseService';
 import {
   DATA_SUBDIR,
   LOCAL_BOOKS_SUBDIR,
@@ -345,5 +349,20 @@ export class WebAppService extends BaseAppService {
       console.error('Failed to save file:', error);
       return false;
     }
+  }
+
+  async openDatabase(
+    schema: SchemaType,
+    path: string,
+    base: BaseDir,
+    opts?: DatabaseOpts,
+  ): Promise<DatabaseService> {
+    const fullPath = await this.resolveFilePath(path, base);
+    // OPFS getFileHandle rejects names containing path separators and the turso WASM
+    // connector passes the whole string as one OPFS handle name, so flatten the path.
+    const opfsName = fullPath.replace(/[/\\]+/g, '_').replace(/^_+/, '');
+    const db = await WebDatabaseService.open(opfsName, opts);
+    await migrate(db, getMigrations(schema), { userVersion: getSchemaUserVersion(schema) });
+    return db;
   }
 }

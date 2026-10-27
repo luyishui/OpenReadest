@@ -42,6 +42,10 @@ import { copyURIToPath, getStorefrontRegionCode } from '@/utils/bridge';
 import { copyFiles } from '@/utils/files';
 
 import { BaseAppService } from './appService';
+import { DatabaseOpts, DatabaseService } from '@/types/database';
+import { SchemaType, migrate } from './database/migrate';
+import { getMigrations, getSchemaUserVersion } from './database/migrations';
+import { NativeDatabaseService } from './database/nativeDatabaseService';
 import {
   DATA_SUBDIR,
   LOCAL_BOOKS_SUBDIR,
@@ -564,5 +568,29 @@ export class NativeAppService extends BaseAppService {
 
     const dirToDelete = await join(rootPath, 'Images', 'Readest');
     await this.deleteDir(dirToDelete, 'None', true);
+  }
+
+  async openDatabase(
+    schema: SchemaType,
+    path: string,
+    base: BaseDir,
+    opts?: DatabaseOpts,
+  ): Promise<DatabaseService> {
+    const fullPath = await this.resolveFilePath(path, base);
+    let db: NativeDatabaseService;
+    try {
+      db = await NativeDatabaseService.open('sqlite:' + fullPath, opts);
+    } catch (error) {
+      // tauri-plugin-turso is not registered until P1A (tauri 2.11 upgrade); surface that
+      // instead of a bare invoke rejection.
+      throw new Error(
+        'Native database unavailable: tauri-plugin-turso failed to open the ' +
+          schema +
+          ' database (plugin not registered until P1A tauri 2.11 upgrade)',
+        { cause: error },
+      );
+    }
+    await migrate(db, getMigrations(schema), { userVersion: getSchemaUserVersion(schema) });
+    return db;
   }
 }
