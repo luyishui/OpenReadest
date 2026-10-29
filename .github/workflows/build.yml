@@ -252,7 +252,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
         run: |
           export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
-          pnpm tauri android build --apk true
+          pnpm tauri android build --apk
 
       - name: sign universal APK
         working-directory: apps/openreadest-app
