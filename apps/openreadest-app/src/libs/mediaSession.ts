@@ -33,6 +33,8 @@ export class TauriMediaSession {
   private handlers: { [key: string]: (() => void) | ((position: number) => void) } = {};
   private eventListenerInited: boolean = false;
   private eventListeners: PluginListener[] = [];
+  // setActive calls run strictly in order, so the last requested state wins natively.
+  private activeChain: Promise<void> = Promise.resolve();
 
   private async requestPostNotificationPermission() {
     const permission = await invoke<Permissions>('plugin:native-tts|checkPermissions');
@@ -75,6 +77,13 @@ export class TauriMediaSession {
     });
     this.eventListeners.push(previousListener);
 
+    const stopListener = await addPluginListener('native-tts', 'media-session-stop', () => {
+      if (this.handlers['stop']) {
+        (this.handlers['stop'] as () => void)();
+      }
+    });
+    this.eventListeners.push(stopListener);
+
     const seekListener = await addPluginListener(
       'native-tts',
       'media-session-seek',
@@ -112,7 +121,16 @@ export class TauriMediaSession {
     }
   }
 
-  async setActive(sessionState: MediaSessionState) {
+  // Serialized: a stop issued while setActive(true) is still registering listeners
+  // runs after it, ends with active:false and unregisters every listener it added.
+  setActive(sessionState: MediaSessionState): Promise<void> {
+    const run = this.activeChain.then(() => this.applyActive(sessionState));
+    this.activeChain = run;
+    return run;
+  }
+
+  // Never rejects, so one failure cannot break the chain.
+  private async applyActive(sessionState: MediaSessionState) {
     try {
       if (sessionState.active) {
         if (sessionState.keepAppInForeground) {

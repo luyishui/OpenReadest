@@ -133,6 +133,22 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
             player.seekTo(0)
             pluginEventTrigger?.invoke("media-session-previous", JSObject())
         }
+
+        // Notification swipe (delete intent) and ACTION_STOP: a real stop, not a pause.
+        // With no JS side left to release the session, stop the service natively.
+        override fun onStop() {
+            val trigger = pluginEventTrigger
+            if (trigger != null) {
+                trigger.invoke("media-session-stop", JSObject())
+            } else {
+                player.pause()
+                androidx.core.app.ServiceCompat.stopForeground(
+                    this@MediaPlaybackService,
+                    androidx.core.app.ServiceCompat.STOP_FOREGROUND_REMOVE,
+                )
+                stopSelf()
+            }
+        }
     }
     
     private fun updatePlaybackState() {

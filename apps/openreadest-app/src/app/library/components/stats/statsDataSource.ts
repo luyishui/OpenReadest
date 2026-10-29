@@ -15,11 +15,13 @@ import {
   getStreak,
   getTotals,
 } from '@/services/statistics/statisticsQueries';
+import { localeWeekStart } from '@/services/statistics/localTime';
+import { uiLocale } from './format';
 
 export interface StatsOverviewData {
   totals: StatsTotals;
   streak: StatsStreak;
-  /** Monday-aligned, oldest first (see getDailyHeatmap). */
+  // HEATMAP_WEEKS full weeks in locale week order, oldest first; days after today are future (see getDailyHeatmap).
   heatmap: DailySeconds[];
   /** 24 local-hour buckets of seconds. */
   hours: number[];
@@ -39,6 +41,7 @@ export interface StatsDataSource {
 export const currentQueryOptions = (): StatsQueryOptions => ({
   now: Math.floor(Date.now() / 1000),
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  weekStart: localeWeekStart(uiLocale()),
 });
 
 export function createDbStatsDataSource(

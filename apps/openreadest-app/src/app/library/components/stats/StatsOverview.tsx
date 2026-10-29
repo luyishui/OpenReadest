@@ -78,6 +78,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ data, onOpenBook, 
         <Heatmap
           days={heatmap}
           label={heatmapLabel}
+          legend={{ less: _('少'), more: _('多'), future: _('未来') }}
           describe={(d) => longDate(d.date) + ' ' + formatDuration(d.seconds, _)}
         />
       </StatsCard>

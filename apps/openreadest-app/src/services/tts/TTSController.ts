@@ -211,6 +211,8 @@ export class TTSController extends EventTarget {
               await this.forward();
             } else {
               await this.stop();
+              // End of book: let the UI release the controller and media session.
+              this.dispatchEvent(new CustomEvent('tts-end'));
             }
           }
           console.log('no SSML, skipping for', this.#nossmlCnt);

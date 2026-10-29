@@ -74,6 +74,9 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
   const unblockerAudioRef = useRef<HTMLAudioElement | null>(null);
   const ttsControllerRef = useRef<TTSController | null>(null);
   const mediaSessionRef = useRef<TauriMediaSession | MediaSession | null>(null);
+  const mediaSessionActiveRef = useRef(false);
+  // Bumped by every stop, unmount and new start; a start that sees it change bails out.
+  const startGenRef = useRef(0);
   const [ttsController, setTtsController] = useState<TTSController | null>(null);
   const [ttsClientsInited, setTtsClientsInitialized] = useState(false);
 
@@ -110,8 +113,9 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
     }
   };
 
-  const initMediaSession = async () => {
-    const mediaSession = getMediaSession();
+  const initMediaSession = async (isStale: () => boolean = () => false) => {
+    // Reuse a live session on restart so its native listeners are not duplicated.
+    const mediaSession = mediaSessionRef.current ?? getMediaSession();
     if (!mediaSession) return;
 
     mediaSessionRef.current = mediaSession;
@@ -129,7 +133,10 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
       } catch {
         artworkImage = await fetchImageAsBase64('/icon.png');
       }
+      // A stop or a newer start while the artwork loaded already owns this session.
+      if (isStale() || mediaSessionRef.current !== mediaSession) return;
 
+      mediaSessionActiveRef.current = true;
       await mediaSession.setActive({
         active: true,
         keepAppInForeground: settings.alwaysInForeground,
@@ -138,6 +145,7 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
         foregroundServiceTitle: _('Read Aloud'),
         foregroundServiceText: _('Ready to read aloud'),
       });
+      if (isStale()) return;
       mediaSession.updateMetadata({
         title: title,
         artist: sectionLabel || title,
@@ -147,23 +155,32 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
     }
   };
 
+  // Idempotent. Only a session that was activated (Android) is released, exactly
+  // once: set_media_session_active(false) stops the foreground service and removes
+  // the notification. A no-op when never activated and on other platforms.
   const deinitMediaSession = async () => {
-    if (mediaSessionRef.current && mediaSessionRef.current instanceof TauriMediaSession) {
-      await mediaSessionRef.current.setActive({
-        active: false,
-        keepAppInForeground: settings.alwaysInForeground,
-      });
-    }
+    const mediaSession = mediaSessionRef.current;
     mediaSessionRef.current = null;
+    if (!mediaSessionActiveRef.current || !(mediaSession instanceof TauriMediaSession)) return;
+    mediaSessionActiveRef.current = false;
+    await mediaSession.setActive({
+      active: false,
+      keepAppInForeground: settings.alwaysInForeground,
+    });
   };
 
   useEffect(() => {
+    const startGen = startGenRef;
     return () => {
+      startGen.current++;
       if (ttsControllerRef.current) {
         ttsControllerRef.current.shutdown();
         ttsControllerRef.current = null;
       }
+      releaseUnblockAudio();
+      deinitMediaSession();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -363,6 +380,13 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
     const { bookKey: ttsBookKey, range, oneTime = false } = event.detail;
     if (bookKey !== ttsBookKey) return;
 
+    // Only the Speak toggle dispatches a range-less tts-speak. With a live
+    // controller its ttsEnabled view is stale, so honour it as toggle-off.
+    if (!range && ttsControllerRef.current) {
+      await handleStop(bookKey);
+      return;
+    }
+
     const view = getView(bookKey);
     const progress = getProgress(bookKey);
     const viewSettings = getViewSettings(bookKey);
@@ -394,19 +418,41 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
 
     const primaryLang = bookData.book.primaryLanguage;
 
+    // Supersede any start still awaiting; handleStop bumps the generation too.
+    const gen = ++startGenRef.current;
+    const isStale = () => startGenRef.current !== gen;
+
     if (ttsControllerRef.current) {
       ttsControllerRef.current.stop();
       ttsControllerRef.current = null;
     }
 
+    let controller: TTSController | null = null;
+    // Superseded mid-start: release only what this start built, never touch state.
+    const abandon = async () => {
+      const local = controller;
+      if (!local) return;
+      if (ttsControllerRef.current === local) {
+        ttsControllerRef.current = null;
+        setTtsController(null);
+      }
+      try {
+        await local.shutdown();
+      } catch (err) {
+        console.warn('Error shutting down superseded TTS controller:', err);
+      }
+    };
+
     try {
       if (appService?.isIOSApp) {
         await invokeUseBackgroundAudio({ enabled: true });
+        if (isStale()) return;
       }
       if (appService?.isMobile) {
         unblockAudio();
       }
-      await initMediaSession();
+      await initMediaSession(isStale);
+      if (isStale()) return;
       setTtsClientsInitialized(false);
 
       if (!oneTime) {
@@ -419,13 +465,22 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
         preprocessSSMLForTTS,
         handleSectionChange,
       );
+      controller = ttsController;
       ttsControllerRef.current = ttsController;
       setTtsController(ttsController);
 
       await ttsController.init();
+      if (isStale()) {
+        await abandon();
+        return;
+      }
       await ttsController.initViewTTS(
         getTTSHighlightOptions(viewSettings.ttsHighlightOptions, viewSettings.isEink),
       );
+      if (isStale()) {
+        await abandon();
+        return;
+      }
       const ssml = view.tts?.from(ttsFromRange);
       if (ssml) {
         const lang = parseSSMLLang(ssml, primaryLang) || 'en';
@@ -440,6 +495,11 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
       setTtsClientsInitialized(true);
       setTTSEnabled(bookKey, true);
     } catch (error) {
+      if (isStale()) {
+        // The stop or newer start that superseded this one owns all shared state.
+        await abandon();
+        return;
+      }
       // Never leave the stats recorder (and the muted visual tracker) running.
       setIsPlaying(false);
       eventDispatcher.dispatch('toast', {
@@ -447,14 +507,16 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
         type: 'error',
       });
       console.error(error);
+      // Release the controller and media session so the next toggle starts clean.
+      await handleStop(bookKey);
     }
   };
 
+  // Close, Back and the Speak toggle: stop even when no controller is left.
   const handleTTSStop = async (event: CustomEvent) => {
     const { bookKey: ttsBookKey } = event.detail;
-    if (ttsControllerRef.current && bookKey === ttsBookKey) {
-      handleStop(bookKey);
-    }
+    if (bookKey !== ttsBookKey) return;
+    await handleStop(bookKey);
   };
 
   const handleTogglePlay = useCallback(async () => {
@@ -501,17 +563,11 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
     }
   }, []);
 
-  const handlePause = useCallback(async () => {
-    const ttsController = ttsControllerRef.current;
-    if (ttsController) {
-      setIsPlaying(false);
-      setIsPaused(true);
-      await ttsController.pause();
-    }
-  }, []);
-
   const handleStop = useCallback(
     async (bookKey: string) => {
+      // Synchronously first: Close dispatches tts-stop right before clearViewState.
+      setTTSEnabled(bookKey, false);
+      startGenRef.current++;
       const ttsController = ttsControllerRef.current;
       if (ttsController) {
         await ttsController.shutdown();
@@ -529,11 +585,20 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
         releaseUnblockAudio();
       }
       await deinitMediaSession();
-      setTTSEnabled(bookKey, false);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [appService],
   );
+
+  // End of book: the controller stopped itself, so release everything like a stop.
+  useEffect(() => {
+    if (!ttsController) return;
+    const handleEnd = () => {
+      handleStop(bookKey);
+    };
+    ttsController.addEventListener('tts-end', handleEnd);
+    return () => ttsController.removeEventListener('tts-end', handleEnd);
+  }, [ttsController, bookKey, handleStop]);
 
   // rate range: 0.5 - 3, 1.0 is normal speed
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -663,7 +728,7 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
       });
 
       mediaSession.setActionHandler('stop', () => {
-        handlePause();
+        handleStop(bookKey);
       });
 
       mediaSession.setActionHandler('seekforward', () => {
@@ -682,7 +747,7 @@ const TTSControl: React.FC<TTSControlProps> = ({ bookKey, gridInsets }) => {
         handleBackward();
       });
     }
-  }, [handleTogglePlay, handlePause, handleForward, handleBackward]);
+  }, [handleTogglePlay, handleStop, handleForward, handleBackward, bookKey]);
 
   useEffect(() => {
     if (!iconRef.current || !showPanel) return;

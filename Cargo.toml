@@ -42,6 +42,7 @@ tauri-build = { path = "packages/tauri/crates/tauri-build" }
 tauri-plugin = { path = "packages/tauri/crates/tauri-plugin" }
 tauri-plugin-deep-link = { path = "packages/tauri-plugins/plugins/deep-link" }
 tauri-plugin-single-instance = { path = "packages/tauri-plugins/plugins/single-instance" }
+turso_ext = { path = "patches/turso_ext-0.6.1" }
 
 [profile.release]
 strip = true

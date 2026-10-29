@@ -14,9 +14,9 @@ import {
   computeStreaks,
   dayKey,
   localDay,
-  mondayWeekday,
   splitLocal,
   tzOffsetResolver,
+  weekdayIndex,
   type TzOffsetFn,
 } from './localTime';
 
@@ -28,8 +28,6 @@ import {
  * session. A gap of exactly 600s stays in the same session.
  */
 export const SESSION_GAP_SECONDS = 600;
-/** Weeks start on Monday (ISO-8601, matches the zh-CN calendar). */
-export const WEEK_START = 'monday';
 export const HEATMAP_WEEKS = 26;
 export const BOOK_DETAIL_DAYS = 30;
 
@@ -74,7 +72,7 @@ function dailyRange(byDay: Map<number, number>, first: number, last: number): Da
 export async function getTotals(db: DatabaseService, opts: StatsQueryOptions): Promise<StatsTotals> {
   const offset = tzOffsetResolver(opts.timeZone);
   const today = localDay(opts.now, offset);
-  const weekStart = today - mondayWeekday(today);
+  const weekStart = today - weekdayIndex(today);
   const events = await loadEvents(db);
   const byDay = secondsByDay(events, offset);
   let weekSeconds = 0;
@@ -94,18 +92,21 @@ export async function getStreak(db: DatabaseService, opts: StatsQueryOptions): P
   return computeStreaks(days, localDay(opts.now, offset));
 }
 
-/**
- * GitHub-style grid: HEATMAP_WEEKS Monday-aligned weeks ending with the
- * current week, through today (future days of this week are omitted), so the
- * first entry is always a Monday and the length is 25 * 7 + weekday(today) + 1.
- */
+// HEATMAP_WEEKS full local weeks, oldest first, always 7 x HEATMAP_WEEKS entries:
+// from the start of the week HEATMAP_WEEKS - 1 weeks before the current one to the
+// end of the current week. Weeks start on opts.weekStart (Monday when omitted), so
+// entry i is column floor(i / 7), row i % 7 in locale weekday order. Days after
+// today carry future: true and zero seconds.
 export async function getDailyHeatmap(db: DatabaseService, opts: StatsQueryOptions): Promise<DailySeconds[]> {
   const offset = tzOffsetResolver(opts.timeZone);
   const today = localDay(opts.now, offset);
-  const first = today - mondayWeekday(today) - (HEATMAP_WEEKS - 1) * 7;
+  const weekEnd = today - weekdayIndex(today, opts.weekStart) + 6;
+  const first = weekEnd - (HEATMAP_WEEKS * 7 - 1);
   // Pad by 2 days: covers any UTC offset (<= 14h) plus a cross-midnight event.
   const events = await loadEvents(db, 'WHERE start_time >= ?', [(first - 2) * SECONDS_PER_DAY]);
-  return dailyRange(secondsByDay(events, offset), first, today);
+  const days = dailyRange(secondsByDay(events, offset), first, today);
+  for (let d = today + 1; d <= weekEnd; d++) days.push({ date: dayKey(d), seconds: 0, future: true });
+  return days;
 }
 
 /** 24 buckets of seconds by local hour (index 0 = 00:00-00:59), all-time. */

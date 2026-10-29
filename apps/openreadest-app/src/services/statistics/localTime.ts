@@ -48,9 +48,36 @@ export function dayKey(day: number): string {
   return new Date(day * SECONDS_PER_DAY * 1000).toISOString().slice(0, 10);
 }
 
-/** Monday-based weekday (0 = Monday). Epoch day 0 (1970-01-01) was a Thursday. */
-export function mondayWeekday(day: number): number {
-  return (((day + 3) % 7) + 7) % 7;
+// ISO weekday (1 = Monday ... 7 = Sunday), the scale of Intl.Locale weekInfo.firstDay.
+export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+// The single week-start fallback: ISO-8601 Monday, which also matches the zh-CN calendar.
+export const DEFAULT_WEEK_START: IsoWeekday = 1;
+
+type LocaleWithWeekInfo = Intl.Locale & {
+  getWeekInfo?: () => { firstDay?: number };
+  weekInfo?: { firstDay?: number };
+};
+
+// First day of the week for a UI locale via Intl.Locale week info (getWeekInfo()
+// in newer engines, the weekInfo getter in older ones); Monday when the locale is
+// missing or invalid, or the engine exposes neither.
+export function localeWeekStart(locale: string | undefined): IsoWeekday {
+  if (!locale) return DEFAULT_WEEK_START;
+  try {
+    const loc = new Intl.Locale(locale) as LocaleWithWeekInfo;
+    const firstDay = (loc.getWeekInfo?.() ?? loc.weekInfo)?.firstDay;
+    return firstDay !== undefined && Number.isInteger(firstDay) && firstDay >= 1 && firstDay <= 7
+      ? (firstDay as IsoWeekday)
+      : DEFAULT_WEEK_START;
+  } catch {
+    return DEFAULT_WEEK_START;
+  }
+}
+
+// Position of a local epoch day within its week (0 = weekStart). Epoch day 0
+// (1970-01-01) was a Thursday, ISO weekday 4.
+export function weekdayIndex(day: number, weekStart: IsoWeekday = DEFAULT_WEEK_START): number {
+  return (((day + 4 - weekStart) % 7) + 7) % 7;
 }
 
 /**

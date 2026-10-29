@@ -80,12 +80,19 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
   // Whole-book remaining time at the reader's own median page pace; empty when
   // reading stats are off or there is too little data. Page-unit contract: the
   // median is per page_stat_data.page, which must be this same progress index
-  // (isFixedLayout ? section : pageinfo). The coarse tick re-reads the median
-  // every 20 progress units so the pace is not frozen at the value from open.
-  const medianPageSecs = useMedianPageDurationSecs(
-    bookData?.book?.hash,
-    progress ? Math.floor(progress.current / 20) : undefined,
-  );
+  // (isFixedLayout ? section : pageinfo). While the median is still null (fewer
+  // events than the threshold, e.g. right after opening) it is re-read on every
+  // page turn, so the estimate appears as soon as there is enough data; once
+  // known, a coarse tick re-reads it every 20 progress units so the pace is not
+  // frozen at the value from open.
+  const [hasMedian, setHasMedian] = useState(false);
+  const medianRefreshKey = progress
+    ? hasMedian
+      ? Math.floor(progress.current / 20)
+      : 'page-' + String(progress.current)
+    : undefined;
+  const medianPageSecs = useMedianPageDurationSecs(bookData?.book?.hash, medianRefreshKey);
+  if ((medianPageSecs !== null) !== hasMedian) setHasMedian(medianPageSecs !== null);
   const bookRemainingSecs = progress
     ? estimateRemainingSeconds(progress.total - progress.current - 1, medianPageSecs)
     : null;
@@ -95,14 +102,21 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
           duration: formatDuration(bookRemainingSecs, _, (n) => formatNumber(n, localize, lang)),
         })
       : '';
-  const chapterLeft = viewSettings.showRemainingTime ? timeLeft : pageLeft;
+  // The chapter toggles control only the chapter piece; the whole-book estimate
+  // shows in the remaining slot whenever it exists.
+  const chapterLeft = viewSettings.showRemainingTime
+    ? timeLeft
+    : viewSettings.showRemainingPages
+      ? pageLeft
+      : '';
 
   const [progressInfoMode, setProgressInfoMode] = useState(viewSettings.progressInfoMode);
 
   const cycleProgressInfoModes = () => {
     if (!viewSettings.tapToToggleFooter) return;
 
-    const hasRemainingInfo = viewSettings.showRemainingTime || viewSettings.showRemainingPages;
+    const hasRemainingInfo =
+      viewSettings.showRemainingTime || viewSettings.showRemainingPages || !!bookTimeLeft;
     const hasProgressInfo = viewSettings.showProgressInfo;
     const modeSequence: (typeof progressInfoMode)[] = ['all', 'remaining', 'progress', 'none'];
     const currentIndex = modeSequence.indexOf(progressInfoMode);
@@ -190,25 +204,24 @@ const ProgressInfoView: React.FC<PageInfoProps> = ({
           isVertical ? 'h-full' : 'h-[52px] w-full gap-x-2',
         )}
       >
-        {(progressInfoMode === 'all' || progressInfoMode === 'remaining') && (
-          <>
-            {viewSettings.showRemainingTime || viewSettings.showRemainingPages ? (
-              <span className={clsx('text-start', !isVertical && 'flex min-w-0 flex-1 gap-x-1')}>
+        {(progressInfoMode === 'all' || progressInfoMode === 'remaining') &&
+          (chapterLeft || bookTimeLeft) && (
+            <span className={clsx('text-start', !isVertical && 'flex min-w-0 flex-1 gap-x-1')}>
+              {chapterLeft ? (
                 <span className={clsx(!isVertical && 'min-w-0 truncate')}>{chapterLeft}</span>
-                {bookTimeLeft ? (
-                  // Own non-shrinking span: on narrow footers the chapter text truncates first,
-                  // never the whole-book estimate.
-                  <span
-                    className={clsx('book-time-left', !isVertical && 'shrink-0 whitespace-nowrap')}
-                  >
-                    {chapterLeft ? ' · ' : ''}
-                    {bookTimeLeft}
-                  </span>
-                ) : null}
-              </span>
-            ) : null}
-          </>
-        )}
+              ) : null}
+              {bookTimeLeft ? (
+                // Own non-shrinking span: on narrow footers the chapter text truncates first,
+                // never the whole-book estimate.
+                <span
+                  className={clsx('book-time-left', !isVertical && 'shrink-0 whitespace-nowrap')}
+                >
+                  {chapterLeft ? ' · ' : ''}
+                  {bookTimeLeft}
+                </span>
+              ) : null}
+            </span>
+          )}
 
         {(progressInfoMode === 'all' || progressInfoMode === 'progress') && (
           <>

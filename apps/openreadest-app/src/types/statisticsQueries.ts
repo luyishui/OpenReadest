@@ -2,12 +2,16 @@
 // detail). Times are Unix seconds; dates are local 'YYYY-MM-DD' strings in the
 // time zone the query was run with.
 
-/** Injectable clock + zone so every query buckets by the user's LOCAL day. */
+import type { IsoWeekday } from '@/services/statistics/localTime';
+
+// Injectable clock + zone so every query buckets by the user's LOCAL day.
 export interface StatsQueryOptions {
   /** Current time, Unix seconds. */
   now: number;
   /** IANA time zone, e.g. 'Asia/Shanghai'. */
   timeZone: string;
+  /** First day of the week (ISO weekday, 1 = Monday); Monday when omitted. Only the heatmap reads it. */
+  weekStart?: IsoWeekday;
 }
 
 export interface StatsTotals {
@@ -28,6 +32,8 @@ export interface StatsStreak {
 export interface DailySeconds {
   date: string;
   seconds: number;
+  /** Heatmap only: a day after today in the current week (placeholder, always 0 seconds). */
+  future?: boolean;
 }
 
 export interface BookRankingEntry {

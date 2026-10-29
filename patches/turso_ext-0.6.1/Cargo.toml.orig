@@ -1,0 +1,19 @@
+[package]
+name = "turso_ext"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Limbo extensions core"
+
+[features]
+vfs = []
+core_only = []
+static = []
+
+[dependencies]
+turso_macros = { workspace = true }
+
+getrandom = "0.4.2"
+chrono = { workspace = true, default-features = true }
