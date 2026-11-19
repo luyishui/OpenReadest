@@ -33,6 +33,7 @@
 - `config.json`（阅读进度、书签、笔记、标注等）
 - 封面 `cover.png`
 - 书架清单 `library.json`
+- 跨书单词笔记和删除记录（通过自动同步）
 
 远端目录结构固定（位于“远端路径”之下）：
 
@@ -44,6 +45,7 @@
     - `config.json`
 - `Readest/System/`
   - `webdav-sync-state.json`（同步状态与基线，用于增量与冲突检测）
+  - `word-notes.json`（跨书单词笔记与删除记录）
 
 ## 增量同步与冲突
 

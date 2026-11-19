@@ -71,7 +71,23 @@ export interface TimeInfo {
   total: number;
 }
 
+export interface WordNote {
+  id: string;
+  /** IDs used by source annotations before independently created entries were merged. */
+  aliases?: string[];
+  word: string;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WordNoteTombstone {
+  word: string;
+  deletedAt: number;
+}
+
 export interface BookNote {
+  wordNoteId?: string;
   bookHash?: string;
   metaHash?: string;
   id: string;

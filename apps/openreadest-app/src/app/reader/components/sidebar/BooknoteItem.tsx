@@ -12,7 +12,8 @@ import { useBookDataStore } from '@/store/bookDataStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { eventDispatcher } from '@/utils/event';
-import { NOTE_PREFIX } from '@/types/view';
+import { deleteBooknote } from '@/helpers/annotations';
+import { resolveWordNote } from '@/utils/wordNotes';
 import useScrollToItem from '../../hooks/useScrollToItem';
 import TextButton from '@/components/TextButton';
 import TextEditor, { TextEditorRef } from '@/components/TextEditor';
@@ -28,10 +29,10 @@ const BooknoteItem: React.FC<BooknoteItemProps> = ({ bookKey, item, onClick }) =
   const { envConfig } = useEnv();
   const { settings } = useSettingsStore();
   const { getConfig, saveConfig, updateBooknotes } = useBookDataStore();
-  const { getProgress, getView, getViewsById } = useReaderStore();
+  const { getProgress, getView } = useReaderStore();
   const { setNotebookEditAnnotation, setNotebookVisible } = useNotebookStore();
 
-  const { text, cfi, note } = item;
+  const { text, cfi, note } = resolveWordNote(item, settings.wordNotes);
   const editorRef = useRef<TextEditorRef>(null);
   const [editorDraft, setEditorDraft] = useState(text || '');
   const [inlineEditMode, setInlineEditMode] = useState(false);
@@ -51,23 +52,15 @@ const BooknoteItem: React.FC<BooknoteItemProps> = ({ bookKey, item, onClick }) =
     }
   };
 
-  const deleteNote = (note: BookNote) => {
-    if (!bookKey) return;
-    const config = getConfig(bookKey);
-    if (!config) return;
-    const { booknotes = [] } = config;
-    booknotes.forEach((item) => {
-      if (item.id === note.id) {
-        item.deletedAt = Date.now();
-        const views = getViewsById(bookKey.split('-')[0]!);
-        views.forEach((view) =>
-          view?.addAnnotation({ ...item, value: `${NOTE_PREFIX}${item.cfi}` }, true),
-        );
-      }
-    });
-    const updatedConfig = updateBooknotes(bookKey, booknotes);
-    if (updatedConfig) {
-      saveConfig(envConfig, bookKey, updatedConfig, settings);
+  const deleteNote = async (note: BookNote) => {
+    try {
+      await deleteBooknote(envConfig, bookKey, note);
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      eventDispatcher.dispatch('toast', {
+        type: 'error',
+        message: _('Failed to save note. Please try again.'),
+      });
     }
   };
 

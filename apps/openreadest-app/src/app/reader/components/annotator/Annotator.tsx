@@ -5,6 +5,7 @@ import * as CFI from 'foliate-js/epubcfi.js';
 import { Overlayer } from 'foliate-js/overlayer.js';
 import { useEnv } from '@/context/EnvContext';
 import { BookNote, BooknoteGroup, HighlightColor, HighlightStyle } from '@/types/book';
+import { getWordNoteById, resolveWordNote } from '@/utils/wordNotes';
 import { NOTE_PREFIX } from '@/types/view';
 import { NativeTouchEventType } from '@/types/system';
 import { getLocale, getOSPlatform, makeSafeFilename, uniqueId } from '@/utils/misc';
@@ -18,6 +19,8 @@ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { useDeviceControlStore } from '@/store/deviceStore';
 import { useFoliateEvents } from '../../hooks/useFoliateEvents';
 import { useNotesSync } from '../../hooks/useNotesSync';
+import { useWordNotes } from '../../hooks/useWordNotes';
+import WordNotePopup from './WordNotePopup';
 import { useTextSelector } from '../../hooks/useTextSelector';
 import { Position, TextSelection } from '@/utils/sel';
 import { getPopupPosition, getPosition, getTextFromRange } from '@/utils/sel';
@@ -64,6 +67,8 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
 
   const [selection, setSelection] = useState<TextSelection | null>(null);
   const [showAnnotPopup, setShowAnnotPopup] = useState(false);
+  const [wordNoteId, setWordNoteId] = useState<string | null>(null);
+  const activeWordNote = getWordNoteById(settings.wordNotes ?? [], wordNoteId);
   const [showWiktionaryPopup, setShowWiktionaryPopup] = useState(false);
   const [showWikipediaPopup, setShowWikipediaPopup] = useState(false);
   const [showTranslatorPopup, setShowTranslatorPopup] = useState(false);
@@ -92,6 +97,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
 
   const showingPopup =
     showAnnotPopup ||
+    Boolean(activeWordNote) ||
     showWiktionaryPopup ||
     showWikipediaPopup ||
     showTranslatorPopup ||
@@ -192,6 +198,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   const handleDismissPopup = useCallback(
     throttle(() => {
       setSelection(null);
+      setWordNoteId(null);
       setShowAnnotPopup(false);
       setShowWiktionaryPopup(false);
       setShowWikipediaPopup(false);
@@ -199,6 +206,14 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       setShowProofreadPopup(false);
       setEditingAnnotation(null);
     }, 500),
+    [],
+  );
+
+  const setTextSelection = useCallback<React.Dispatch<React.SetStateAction<TextSelection | null>>>(
+    (value) => {
+      setWordNoteId(null);
+      setSelection(value);
+    },
     [],
   );
 
@@ -216,7 +231,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     handleShowPopup,
     handleUpToPopup,
     handleContextmenu,
-  } = useTextSelector(bookKey, setSelection, getAnnotationText, handleDismissPopup);
+  } = useTextSelector(bookKey, setTextSelection, getAnnotationText, handleDismissPopup);
 
   const handleDismissPopupAndSelection = () => {
     handleDismissPopup();
@@ -308,7 +323,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     const hexColor = getHighlightColorHex(settings, color);
     const einkBgColor = isDarkMode ? '#000000' : '#ffffff';
     const einkFgColor = isDarkMode ? '#ffffff' : '#000000';
-    if (annotation.note) {
+    if (annotation.note && (!style || annotation.value?.startsWith(NOTE_PREFIX))) {
       const { defaultView } = doc;
       const node = range.startContainer;
       const el = node.nodeType === 1 ? node : node.parentElement;
@@ -350,6 +365,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       (annotation) => (!isNote && annotation.style) || (isNote && annotation.note),
     );
     if (!annotation) return;
+    setWordNoteId(null);
 
     const { style, color, text, note } = annotation;
     const selection = {
@@ -382,6 +398,18 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
   };
 
   useFoliateEvents(view, { onLoad, onDrawAnnotation, onShowAnnotation });
+
+  useWordNotes(view, settings.wordNotes, (note, range, index) => {
+    setSelection({ key: bookKey, text: range.toString(), range, index });
+    setWordNoteId(note.id);
+    setShowAnnotPopup(false);
+    setShowTranslatorPopup(false);
+    setShowWiktionaryPopup(false);
+    setShowWikipediaPopup(false);
+    setShowProofreadPopup(false);
+    setEditingAnnotation(null);
+    handleUpToPopup();
+  });
 
   useEffect(() => {
     handleShowPopup(showingPopup);
@@ -487,6 +515,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       setProofreadPopupPosition(proofreadPopupPos);
       setTrianglePosition(triangPos);
 
+      if (activeWordNote) return;
       const { enableAnnotationQuickActions, annotationQuickAction } = viewSettings;
       if (enableAnnotationQuickActions && annotationQuickAction && isTextSelected.current) {
         handleQuickAction();
@@ -495,7 +524,7 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection, bookKey]);
+  }, [selection, bookKey, wordNoteId]);
 
   useEffect(() => {
     if (!progress) return;
@@ -534,8 +563,8 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
         booknote.type === 'annotation' && !booknote.deletedAt && booknote.cfi === selection.cfi,
     );
     const notes = annotations.filter((item) => item.note && item.note.trim().length > 0);
-    setAnnotationNotes(notes);
-  }, [selection?.cfi, showAnnotationNotes, config.booknotes]);
+    setAnnotationNotes(notes.map((note) => resolveWordNote(note, settings.wordNotes)));
+  }, [selection?.cfi, showAnnotationNotes, config.booknotes, settings.wordNotes]);
 
   const handleShowAnnotPopup = () => {
     if (!appService?.isMobile) {
@@ -628,10 +657,18 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
       views.forEach((view) => view?.addAnnotation(annotation, true));
       if (update) {
         annotation.id = annotations[existingIndex]!.id;
-        annotations[existingIndex] = annotation;
-        views.forEach((view) => view?.addAnnotation(annotation));
+        const existing = annotations[existingIndex]!;
+        annotations[existingIndex] = {
+          ...annotation,
+          note: existing.note,
+          wordNoteId: existing.wordNoteId,
+        };
+        views.forEach((view) => view?.addAnnotation(annotations[existingIndex]!));
       } else {
-        annotations[existingIndex]!.deletedAt = Date.now();
+        const existing = annotations[existingIndex]!;
+        annotations[existingIndex] = existing.note
+          ? { ...existing, style: undefined, color: undefined, updatedAt: Date.now() }
+          : { ...existing, deletedAt: Date.now() };
         handleDismissPopup();
       }
     } else {
@@ -650,7 +687,6 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
     if (!selection || !selection.text) return;
     const { sectionHref: href } = progress;
     selection.href = href;
-    handleHighlight(true);
     setNotebookVisible(true);
     setNotebookNewAnnotation(selection);
     handleDismissPopup();
@@ -870,6 +906,16 @@ const Annotator: React.FC<{ bookKey: string }> = ({ bookKey }) => {
 
   return (
     <div ref={containerRef} role='toolbar' tabIndex={-1}>
+      {activeWordNote && trianglePosition && dictPopupPosition && (
+        <WordNotePopup
+          key={activeWordNote.id}
+          note={activeWordNote}
+          position={dictPopupPosition}
+          trianglePosition={trianglePosition}
+          width={dictPopupWidth}
+          onDismiss={handleDismissPopupAndSelection}
+        />
+      )}
       {showWiktionaryPopup && trianglePosition && dictPopupPosition && (
         <WiktionaryPopup
           word={selection?.text as string}
