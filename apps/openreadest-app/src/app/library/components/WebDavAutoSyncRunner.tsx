@@ -12,6 +12,10 @@ import { getLocalLibraryPath } from '@/services/webdav/sync/paths';
 import { useSettingsStore } from '@/store/settingsStore';
 import { isReadingStatsEnabled } from '@/services/statistics/remainingTime';
 import { eventDispatcher } from '@/utils/event';
+import { useBookDataStore } from '@/store/bookDataStore';
+import { useReaderStore } from '@/store/readerStore';
+import { mergeWebDavJsonContent, stableStringify } from '@/services/webdav/sync/contentMerge';
+import type { BookConfig } from '@/types/book';
 
 const shouldRun = () => {
   if (typeof navigator === 'undefined') return false;
@@ -19,7 +23,7 @@ const shouldRun = () => {
 };
 
 const WebDavAutoSyncRunner = () => {
-  const { appService } = useEnv();
+  const { appService, envConfig } = useEnv();
   const _ = useTranslation();
   const autoSyncEnabled = useWebDavStore((s) => s.autoSyncEnabled);
   const autoSyncIntervalMinutes = useWebDavStore((s) => s.autoSyncIntervalMinutes);
@@ -37,12 +41,17 @@ const WebDavAutoSyncRunner = () => {
     if (!appService) return;
 
     let disposed = false;
+    let syncRequested = false;
     let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
     const tick = async () => {
       if (disposed || !shouldRun()) return;
       const store = useWebDavStore.getState();
-      if (store.isSyncing) return;
+      if (store.isSyncing) {
+        syncRequested = true;
+        return;
+      }
+      syncRequested = false;
       const profile =
         store.profiles.find((p) => p.id === store.activeProfileId) ?? store.profiles[0];
       if (!profile?.serverUrl || !profile?.username) return;
@@ -69,9 +78,31 @@ const WebDavAutoSyncRunner = () => {
       // Part 4.5 互斥收口：手动同步可能在上方 await 期间启动（isSyncing 已
       // 置位）。重查与 setSyncing 之间不能有 await，避免双引擎并发写同一份
       // 同步状态（后者为 last-writer-wins，会产生重传抖动）。
-      if (useWebDavStore.getState().isSyncing) return;
+      if (useWebDavStore.getState().isSyncing) {
+        syncRequested = true;
+        return;
+      }
       useWebDavStore.getState().setSyncing(true);
       try {
+        // Flush unsaved reading progress without rewriting unchanged configs.
+        const openBooks = Object.values(useReaderStore.getState().viewStates).filter(
+          (state) => state.isPrimary && state.inited,
+        );
+        for (const state of openBooks) {
+          const data = useBookDataStore.getState().getBookData(state.key);
+          if (!data?.book) continue;
+          const settings = useSettingsStore.getState().settings;
+          const disk = await appService.loadBookConfig(data.book, settings);
+          const config = useBookDataStore.getState().getConfig(state.key);
+          if (
+            config?.location &&
+            (!disk.location ||
+              (config.progressUpdatedAt ?? config.updatedAt ?? 0) >
+                (disk.progressUpdatedAt ?? disk.updatedAt ?? 0))
+          ) {
+            await useBookDataStore.getState().saveConfig(envConfig, state.key, config, settings);
+          }
+        }
         const { failures, conflicts } = await syncWebDavSelection(
           appService,
           profile,
@@ -88,6 +119,39 @@ const WebDavAutoSyncRunner = () => {
         );
         // a cancelled run (unmount or effect re-run) is partial, not a success
         if (disposed) return;
+        // Adopt downloaded config in memory too, otherwise the next auto-save
+        // would write the stale position back over the synchronized file.
+        for (const state of Object.values(useReaderStore.getState().viewStates).filter(
+          (state) => state.isPrimary && state.inited,
+        )) {
+          const data = useBookDataStore.getState().getBookData(state.key);
+          const current = useBookDataStore.getState().getConfig(state.key);
+          if (!data?.book || !current || !useReaderStore.getState().getViewState(state.key)?.inited)
+            continue;
+          const disk = await appService.loadBookConfig(
+            data.book,
+            useSettingsStore.getState().settings,
+          );
+          const latest = useBookDataStore.getState().getConfig(state.key);
+          if (!latest) continue;
+          const result = mergeWebDavJsonContent(
+            'book/config.json',
+            JSON.stringify(latest),
+            JSON.stringify(disk),
+          );
+          if (!result) continue;
+          const merged = result.value as BookConfig;
+          const moved = merged.location && merged.location !== latest.location;
+          useBookDataStore.getState().setConfig(state.key, merged);
+          if (moved) {
+            await useReaderStore.getState().applySyncedProgress(data.id, merged.location!);
+          }
+          if (moved || result.text !== stableStringify(disk)) {
+            await useBookDataStore
+              .getState()
+              .saveConfig(envConfig, state.key, merged, useSettingsStore.getState().settings);
+          }
+        }
         if (conflicts.length > 0) {
           // manual 冲突策略下冲突项不会自动解决：不记成功（下次仍会尝试），
           // 冲突列表并入 store 供同步窗口处理（Part 4.4），不再静默跳过。
@@ -140,27 +204,46 @@ const WebDavAutoSyncRunner = () => {
         }
       } finally {
         useWebDavStore.getState().setSyncing(false);
+        if (syncRequested && !disposed) void tick();
       }
     };
 
     const ms = Math.max(5, autoSyncIntervalMinutes) * 60 * 1000;
-    // honor the interval across remounts and app restarts instead of
-    // syncing immediately every time this effect re-runs
-    const { lastSuccessAt, lastAutoSyncAttemptAt } = useWebDavStore.getState();
-    const lastRunAt = Math.max(lastSuccessAt ?? 0, lastAutoSyncAttemptAt);
-    // clamp to [0, ms] so a lastRunAt in the future (clock changes) cannot stall syncing
-    const initialDelay = Math.min(ms, Math.max(0, ms - (Date.now() - lastRunAt)));
+    // A recent local success says nothing about progress on the other device.
     const timeoutHandle = setTimeout(() => {
       tick();
       intervalHandle = setInterval(() => tick(), ms);
-    }, initialDelay);
+    }, 0);
+    const unsubscribeLibrary = useLibraryStore.subscribe((state, previous) => {
+      if (state.library.length > 0 && previous.library.length === 0) void tick();
+    });
+    const unsubscribeReader = useReaderStore.subscribe((state, previous) => {
+      const opened = Object.entries(state.viewStates).some(
+        ([key, view]) => view.isPrimary && view.inited && !previous.viewStates[key]?.inited,
+      );
+      if (opened) void tick();
+    });
+    const onResume = () => {
+      if (document.visibilityState === 'visible') void tick();
+    };
+    const onLeave = () => void tick();
+    window.addEventListener('focus', onResume);
+    window.addEventListener('blur', onLeave);
+    window.addEventListener('online', onResume);
+    document.addEventListener('visibilitychange', onLeave);
 
     return () => {
       disposed = true;
       clearTimeout(timeoutHandle);
       if (intervalHandle) clearInterval(intervalHandle);
+      unsubscribeLibrary();
+      unsubscribeReader();
+      window.removeEventListener('focus', onResume);
+      window.removeEventListener('blur', onLeave);
+      window.removeEventListener('online', onResume);
+      document.removeEventListener('visibilitychange', onLeave);
     };
-  }, [autoSyncEnabled, autoSyncIntervalMinutes, appService, _]);
+  }, [autoSyncEnabled, autoSyncIntervalMinutes, appService, envConfig, _]);
 
   return null;
 };

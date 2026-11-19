@@ -35,6 +35,7 @@ interface ViewState {
   ribbonVisible: boolean;
   ttsEnabled: boolean;
   syncing: boolean;
+  applyingSyncedProgress?: boolean;
   gridInsets: Insets | null;
   /* View settings for the view: 
     generally view settings have a hierarchy of global settings < book settings < view settings
@@ -66,6 +67,7 @@ interface ReaderStore {
   getView: (key: string | null) => FoliateView | null;
   getViews: () => FoliateView[];
   getViewsById: (id: string) => FoliateView[];
+  applySyncedProgress: (id: string, location: string) => Promise<void>;
   setViewSettings: (key: string, viewSettings: ViewSettings) => void;
   getViewSettings: (key: string) => ViewSettings | null;
 
@@ -104,6 +106,29 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
     return Object.values(viewStates)
       .filter((state) => state.key && state.key.startsWith(id))
       .map((state) => state.view!);
+  },
+
+  applySyncedProgress: async (id, location) => {
+    const views = Object.values(get().viewStates).filter(
+      (state) => state.key.split('-')[0] === id && state.view && state.inited,
+    );
+    for (const { key, view } of views) {
+      const markApplying = (applyingSyncedProgress: boolean) => {
+        set((state) => {
+          const current = state.viewStates[key];
+          if (!current || current.view !== view) return state;
+          return {
+            viewStates: { ...state.viewStates, [key]: { ...current, applyingSyncedProgress } },
+          };
+        });
+      };
+      markApplying(true);
+      try {
+        await view!.goTo(location);
+      } finally {
+        markApplying(false);
+      }
+    }
   },
 
   clearViewState: (key: string) => {
@@ -307,10 +332,18 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
       }
 
       const oldConfig = bookData.config;
+      // Restoring a CFI can relocate to a different page boundary on each screen.
+      // Preserve its original anchor/version until the reader actually navigates.
+      const restoring = !viewState.inited || viewState.applyingSyncedProgress;
+      const savedLocation = restoring ? oldConfig?.location || location : location;
       const newConfig = {
         ...bookData.config,
         progress,
-        location,
+        location: savedLocation,
+        progressUpdatedAt:
+          !restoring && savedLocation !== oldConfig?.location
+            ? Date.now()
+            : (oldConfig?.progressUpdatedAt ?? oldConfig?.updatedAt),
       } as BookConfig;
 
       useBookDataStore.setState((state) => ({

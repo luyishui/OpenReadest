@@ -69,7 +69,6 @@ import SettingsDialog from '@/components/settings/SettingsDialog';
 import ModalPortal from '@/components/ModalPortal';
 import TransferQueuePanel from './components/TransferQueuePanel';
 import WebDavCenterWindow from './components/WebDavCenterWindow';
-import WebDavAutoSyncRunner from './components/WebDavAutoSyncRunner';
 import { ReadingStatsPill } from './components/stats/ReadingStatsPill';
 import { createGatedStatsDataSource } from './components/stats/statsDataSource';
 import { StatisticsDb } from '@/services/statistics/statisticsDb';
@@ -145,7 +144,9 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   // Library books by md5 so stats rows and the detail header draw the same cover the grid does.
   const statsBooksByMd5 = useMemo(
     () =>
-      new Map(libraryBooks.filter((book) => !book.deletedAt).map((book) => [book.hash, book] as const)),
+      new Map(
+        libraryBooks.filter((book) => !book.deletedAt).map((book) => [book.hash, book] as const),
+      ),
     [libraryBooks],
   );
   // Keyed on the sorted hashes so progress writes don't rebuild the Set and
@@ -985,7 +986,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
           <TransferQueuePanel />
         </ModalPortal>
       )}
-      <WebDavAutoSyncRunner />
       <WebDavCenterWindow />
       <AboutWindow />
       <SponsorWindow />

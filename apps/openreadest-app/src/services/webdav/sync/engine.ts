@@ -31,7 +31,10 @@ import {
   READEST_WEBDAV_SYSTEM_DIR,
 } from './paths';
 import { StatisticsDb } from '@/services/statistics/statisticsDb';
-import { STATISTICS_SYNC_KEY, syncStatisticsWithWebDav } from '@/services/statistics/statisticsSync';
+import {
+  STATISTICS_SYNC_KEY,
+  syncStatisticsWithWebDav,
+} from '@/services/statistics/statisticsSync';
 
 type SyncCallbacks = {
   onProgress?: (progress: WebDavSyncProgress) => void;
@@ -47,7 +50,8 @@ type SyncControl = {
 /**
  * 远端探测（PROPFIND）的兜底间隔。
  * 增量短路：对"本地未变且远端指纹已知"的条目，在 remoteProbeAt 之后的时间窗内
- * 跳过 PROPFIND，直接信任状态里缓存的远端指纹；超过窗口后强制重新探测，
+ * 对二进制文件跳过 PROPFIND，直接信任状态里缓存的远端指纹；JSON 每轮探测。
+ * 超过窗口后强制重新探测，
  * 保证远端被其他设备/外部工具改动时仍可被检测（检测延迟 ≤ 本间隔）。
  * 0 表示关闭短路（每轮全量探测），测试与手动严格场景可用。
  */
@@ -293,6 +297,19 @@ const writeLocalState = async (appService: AppService, state: WebDavSyncStateV1)
   await appService.writeFile(path, 'Settings', JSON.stringify(state));
 };
 
+const retainDeviceBaselines = (
+  local: WebDavSyncStateV1,
+  shared: WebDavSyncStateV1,
+  verifiedKeys: Iterable<string>,
+): WebDavSyncStateV1 => {
+  const entries = { ...local.entries };
+  for (const key of verifiedKeys) {
+    if (shared.entries[key]) entries[key] = shared.entries[key];
+    else delete entries[key];
+  }
+  return { ...shared, entries };
+};
+
 /**
  * 远端同步状态读取结果的三态语义：
  * - unknown=false：读到了合法的 v1 状态，或远端确实还没有状态文件
@@ -399,6 +416,7 @@ export const syncWebDavSelection = async (
   const remoteStateRead = await readRemoteState(client);
   const remoteState = remoteStateRead.state;
   const state = mergeWebDavSyncStates(localState, remoteState);
+  const verifiedKeys = new Set<string>();
 
   const includeLibrary = options.includeLibrary ?? true;
   const includeBookFiles = options.includeBookFiles ?? true;
@@ -542,6 +560,7 @@ export const syncWebDavSelection = async (
         // 删除前的旧文件 → 应用删除
         try {
           await appService.deleteFile(localPath, 'Books');
+          verifiedKeys.add(key);
           log('download', key, 'completed', '已应用远端删除墓碑');
         } catch (error) {
           log('download', key, 'failed', (error as Error).message || '本地删除失败');
@@ -576,6 +595,10 @@ export const syncWebDavSelection = async (
     callbacks?.onProgress?.({ ...progress });
 
     const baseEntry = state.entries[item.key] ?? {};
+    // Shared state carries other devices' fingerprints. Only this device's
+    // last successful sync can establish whether its local/remote files changed.
+    // Keep merged state for tombstones and publishing converged entries.
+    const deviceEntry = localState.entries[item.key];
     let localFingerprint: LocalFingerprint | null = null;
     if (item.localPath) {
       try {
@@ -583,7 +606,7 @@ export const syncWebDavSelection = async (
           appService,
           item.localPath,
           'Books',
-          baseEntry.local,
+          deviceEntry?.local,
         );
       } catch {
         // 本地读取失败（IO 抖动/权限）：跳过该条目并保持状态不变，
@@ -596,7 +619,7 @@ export const syncWebDavSelection = async (
     }
     const localExists = !!localFingerprint;
     const localChanged =
-      localExists && !areLocalFingerprintsEqual(localFingerprint ?? undefined, baseEntry.local);
+      localExists && !areLocalFingerprintsEqual(localFingerprint ?? undefined, deviceEntry?.local);
 
     // 增量短路：仅当"本地文件存在且自上次同步未变 + 远端指纹已知（上次完整同步
     // 验证过） + 条目无墓碑 + 远端在最近 remoteProbeAt 时间窗内被实际探测过"时，
@@ -606,19 +629,20 @@ export const syncWebDavSelection = async (
     // 仅在窗口内把检测延迟约束在时间窗内）。
     const probeIntervalMs = options.remoteProbeIntervalMs ?? DEFAULT_REMOTE_PROBE_INTERVAL_MS;
     const remoteProbeFresh =
-      typeof baseEntry.remoteProbeAt === 'number' &&
-      Date.now() - baseEntry.remoteProbeAt < probeIntervalMs;
+      typeof deviceEntry?.remoteProbeAt === 'number' &&
+      Date.now() - deviceEntry.remoteProbeAt < probeIntervalMs;
     const canSkipRemoteProbe =
+      !isJsonPath(item.remotePath) &&
       !!localFingerprint &&
       !baseEntry.deletedAt &&
-      !!baseEntry.remote &&
+      !!deviceEntry?.remote &&
       !localChanged &&
       remoteProbeFresh;
 
     let remoteSnapshot: RemoteProbeResult;
     let remoteProbeAt: number | undefined;
     if (canSkipRemoteProbe) {
-      remoteSnapshot = { kind: 'found', fingerprint: baseEntry.remote! };
+      remoteSnapshot = { kind: 'found', fingerprint: deviceEntry!.remote! };
     } else {
       remoteSnapshot = await readRemoteFingerprint(client, item.remotePath);
       if (remoteSnapshot.kind === 'unknown') {
@@ -641,7 +665,7 @@ export const syncWebDavSelection = async (
       remoteSnapshot.kind === 'found' ? remoteSnapshot.fingerprint : undefined;
     const remoteExists = remoteSnapshot.kind === 'found';
     const remoteChanged =
-      remoteExists && !areRemoteFingerprintsEqual(remoteFingerprint, baseEntry.remote);
+      remoteExists && !areRemoteFingerprintsEqual(remoteFingerprint, deviceEntry?.remote);
 
     let completedTransfer: 'upload' | 'download' | 'merge' | null = null;
     let operationFailed = false;
@@ -741,7 +765,7 @@ export const syncWebDavSelection = async (
       }
     };
 
-    const synchronizedBefore = !!baseEntry.local && !!baseEntry.remote && !baseEntry.deletedAt;
+    const synchronizedBefore = !!deviceEntry?.local && !!deviceEntry.remote && !baseEntry.deletedAt;
     // 「移除设备副本」（deleteAction:'local'）只删 bookFile、保留书架活条目
     // （无 deletedAt），是「未下载」语义而非删除语义。localDeletion 需要本地
     // 显式删除的证据：书目文件条目仅当 bookDeletedAt 存在（用户在书架删书）
@@ -830,6 +854,7 @@ export const syncWebDavSelection = async (
           deletedAt,
           updatedAt: deletedAt,
         };
+        verifiedKeys.add(item.key);
         stateDirty = true;
         deletionHandled = true;
       } catch (error) {
@@ -857,6 +882,18 @@ export const syncWebDavSelection = async (
 
     if (localDeletion || remoteDeletion || bothDeleted || tombstoneForCleanup) {
       await markDeleted();
+    } else if (
+      localExists &&
+      remoteExists &&
+      isJsonPath(item.remotePath) &&
+      (localChanged || remoteChanged)
+    ) {
+      // Even a one-sided save can contain an older reading position. Merge
+      // config fields by their own versions instead of replacing the whole file.
+      if (!(await mergeJson())) {
+        operationFailed = true;
+        log('download', item.key, 'failed', 'JSON 内容合并不可用，已保留两端文件');
+      }
     } else if (localChanged && remoteChanged) {
       const conflict: WebDavConflictItem = {
         // 冲突必须归属检出它的 profile：resolve 用该 profile 的服务器/凭据
@@ -866,10 +903,7 @@ export const syncWebDavSelection = async (
         local: localFingerprint ?? undefined,
         remote: remoteFingerprint,
       };
-      const merged = await mergeJson();
-      if (merged) {
-        // JSON content was merged (or a merge attempt failed and was logged).
-      } else if (profile.conflictStrategy === 'manual') {
+      if (profile.conflictStrategy === 'manual') {
         conflicts.push(conflict);
         log('download', item.key, 'conflict', '检测到冲突');
         progress.completedItems += 1;
@@ -891,20 +925,7 @@ export const syncWebDavSelection = async (
     } else if (localChanged && !remoteChanged) {
       await upload();
     } else if (!localChanged && remoteChanged) {
-      if (isLibraryJsonItem(item.key)) {
-        // library.json 是书库索引而非普通文件：远端变化时做内容级合并
-        // （mergeWebDavJsonContent），而不是整体覆盖——既保留本地尚未
-        // 同步的条目，也把远端墓碑（deletedAt）并入本地；同时防止远端
-        // 索引回退（丢失已同步条目）导致本地数据丢失。
-        const merged = await mergeJson();
-        if (!merged) {
-          // 远端读取失败或格式不兼容（无 hash 键/重复 hash）：保守跳过
-          // 本轮，不用可能损坏的内容覆盖本地；下次同步自动重试。
-          log('download', item.key, 'skipped', 'library.json 合并不可用，已跳过本轮');
-        }
-      } else {
-        await download();
-      }
+      await download();
     } else {
       log('upload', item.key, 'skipped', '无需同步');
     }
@@ -955,6 +976,7 @@ export const syncWebDavSelection = async (
           state.entries[item.key] = updatedEntry;
           stateDirty = true;
         }
+        verifiedKeys.add(item.key);
       }
     } else if (
       !options.dryRun &&
@@ -966,9 +988,10 @@ export const syncWebDavSelection = async (
       // 本轮做了远端探测但无需传输（保持同步）：只刷新探测时间戳，
       // 使后续轮次可命中增量短路；不改动 local/remote 指纹（探测结果
       // 与传输无关时不应覆盖缓存，避免掩盖远端变化信号）。
-      const current = state.entries[item.key];
+      const current = deviceEntry;
       if (current && (current.remoteProbeAt ?? 0) < remoteProbeAt) {
         state.entries[item.key] = { ...current, remoteProbeAt };
+        verifiedKeys.add(item.key);
         stateDirty = true;
       }
     }
@@ -1017,7 +1040,7 @@ export const syncWebDavSelection = async (
           remoteStateResult.error || '写入远端同步状态失败',
         );
       } else {
-        await writeLocalState(appService, state);
+        await writeLocalState(appService, retainDeviceBaselines(localState, state, verifiedKeys));
       }
     }
   }
@@ -1190,7 +1213,14 @@ export const resolveWebDavConflicts = async (
         r.ok ? { ...r, ok: false, message: '写入同步状态失败，请重试' } : r,
       );
     }
-    await writeLocalState(appService, state);
+    await writeLocalState(
+      appService,
+      retainDeviceBaselines(
+        localState,
+        state,
+        results.filter((r) => r.ok).map((r) => r.path),
+      ),
+    );
   }
   return results;
 };

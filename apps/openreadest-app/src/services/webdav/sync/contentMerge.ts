@@ -34,7 +34,7 @@ const canonicalize = (value: unknown): unknown => {
     );
 };
 
-const stableStringify = (value: unknown): string => JSON.stringify(canonicalize(value));
+export const stableStringify = (value: unknown): string => JSON.stringify(canonicalize(value));
 
 const compareStrings = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -150,17 +150,33 @@ const mergeBookConfig = (local: unknown, remote: unknown): JsonRecord | null => 
   const remoteBookHash = getOptionalId(remote, 'bookHash');
   if (localBookHash && remoteBookHash && localBookHash !== remoteBookHash) return null;
 
-  const hasBooknotes = 'booknotes' in local || 'booknotes' in remote;
-  if (!hasBooknotes) return null;
-
   const localNotes = indexUniqueRecords('booknotes' in local ? local['booknotes'] : [], 'id');
   const remoteNotes = indexUniqueRecords('booknotes' in remote ? remote['booknotes'] : [], 'id');
   if (!localNotes || !remoteNotes) return null;
-  if (localNotes.size === 0 && remoteNotes.size === 0) return null;
 
   const winner = pickRecord(local, remote, ['updatedAt'], withoutBooknotes);
   const loser = winner === local ? remote : local;
   const merged: JsonRecord = { ...winner };
+  // Layout edits and periodic saves must not replace a newer reading position.
+  const progressVersion = (record: JsonRecord) =>
+    typeof record['progressUpdatedAt'] === 'number'
+      ? record['progressUpdatedAt']
+      : numericVersion(record, ['updatedAt']);
+  const hasProgress = (record: JsonRecord) =>
+    typeof record['location'] === 'string' && !!record['location'];
+  const progressWinner = !hasProgress(local)
+    ? remote
+    : !hasProgress(remote)
+      ? local
+      : progressVersion(local) > progressVersion(remote)
+        ? local
+        : progressVersion(local) < progressVersion(remote)
+          ? remote
+          : winner;
+  for (const field of ['location', 'progress', 'xpointer', 'progressUpdatedAt']) {
+    if (field in progressWinner) merged[field] = progressWinner[field];
+    else delete merged[field];
+  }
 
   for (const identityKey of ['bookHash', 'metaHash']) {
     if (!getOptionalId(merged, identityKey)) {
