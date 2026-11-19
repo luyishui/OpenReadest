@@ -5,13 +5,15 @@ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
 import { TextSelection } from '@/utils/sel';
 import { md5Fingerprint } from '@/utils/md5';
 import { BookNote } from '@/types/book';
+import { useSettingsStore } from '@/store/settingsStore';
+import { getWordNoteById, normalizeWord, resolveWordNote } from '@/utils/wordNotes';
 import useShortcuts from '@/hooks/useShortcuts';
 import TextEditor, { TextEditorRef } from '@/components/TextEditor';
 import TextButton from '@/components/TextButton';
 
 interface NoteEditorProps {
-  onSave: (selection: TextSelection, note: string) => void;
-  onEdit: (annotation: BookNote) => void;
+  onSave: (selection: TextSelection, note: string, allBooks: boolean) => Promise<void>;
+  onEdit: (annotation: BookNote, allBooks: boolean) => Promise<void>;
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ onSave, onEdit }) => {
@@ -27,11 +29,17 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ onSave, onEdit }) => {
 
   const editorRef = useRef<TextEditorRef>(null);
   const [note, setNote] = useState('');
+  const [allBooks, setAllBooks] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const separatorWidth = useResponsiveSize(3);
 
   useEffect(() => {
+    setError('');
+    const wordNotes = useSettingsStore.getState().settings.wordNotes ?? [];
+    setAllBooks(Boolean(getWordNoteById(wordNotes, notebookEditAnnotation?.wordNoteId)));
     if (notebookEditAnnotation) {
-      const noteText = notebookEditAnnotation.note;
+      const noteText = resolveWordNote(notebookEditAnnotation, wordNotes).note;
       setNote(noteText);
       editorRef.current?.setValue(noteText);
       editorRef.current?.focus();
@@ -65,15 +73,22 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ onSave, onEdit }) => {
     }
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     const currentValue = editorRef.current?.getValue();
-    if (currentValue) {
+    if (!currentValue?.trim() || saving) return;
+    setSaving(true);
+    setError('');
+    try {
       if (notebookNewAnnotation) {
-        onSave(notebookNewAnnotation, currentValue);
+        await onSave(notebookNewAnnotation, currentValue, allBooks);
       } else if (notebookEditAnnotation) {
-        notebookEditAnnotation.note = currentValue;
-        onEdit(notebookEditAnnotation);
+        await onEdit({ ...notebookEditAnnotation, note: currentValue }, allBooks);
       }
+    } catch (error) {
+      console.error('Failed to save note:', error);
+      setError(_('Failed to save note. Please try again.'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -86,17 +101,21 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ onSave, onEdit }) => {
     }
   };
 
-  useShortcuts({
-    onSaveNote: () => {
-      const currentValue = editorRef.current?.getValue();
-      if (currentValue) {
-        handleSaveNote();
-      }
+  useShortcuts(
+    {
+      onSaveNote: () => {
+        const currentValue = editorRef.current?.getValue();
+        if (currentValue) {
+          handleSaveNote();
+        }
+      },
+      onEscape: handleEscape,
     },
-    onEscape: handleEscape,
-  });
+    [notebookNewAnnotation, notebookEditAnnotation, allBooks, saving],
+  );
 
-  const canSave = Boolean(note.trim());
+  const canSave = Boolean(note.trim()) && !saving;
+  const isSingleWord = Boolean(normalizeWord(getAnnotationText()));
 
   return (
     <div className='content booknote-item note-editor-container bg-base-100 mt-2 rounded-md p-2'>
@@ -125,8 +144,30 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ onSave, onEdit }) => {
         </div>
       </div>
 
+      {isSingleWord && (
+        <label className='mt-3 flex cursor-pointer items-start gap-2 text-sm'>
+          <input
+            type='checkbox'
+            className='checkbox checkbox-sm mt-0.5'
+            checked={allBooks}
+            onChange={(event) => setAllBooks(event.target.checked)}
+            disabled={saving}
+          />
+          <span>{_('Apply to the same word in all books')}</span>
+        </label>
+      )}
+      {allBooks && (
+        <p className='mt-2 text-xs opacity-70'>{_('Changes update this word note in all books')}</p>
+      )}
+      {error && (
+        <p role='alert' className='text-error mt-2 text-sm'>
+          {error}
+        </p>
+      )}
       <div className='flex justify-end space-x-3 p-2' dir='ltr'>
-        <TextButton onClick={handleEscape}>{_('Cancel')}</TextButton>
+        <TextButton onClick={handleEscape} disabled={saving}>
+          {_('Cancel')}
+        </TextButton>
         <TextButton onClick={handleSaveNote} disabled={!canSave}>
           {_('Save')}
         </TextButton>

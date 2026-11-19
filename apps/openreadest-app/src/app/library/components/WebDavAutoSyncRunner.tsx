@@ -79,6 +79,7 @@ const WebDavAutoSyncRunner = () => {
             books,
             includeLibrary: true,
             includeStatistics: isReadingStatsEnabled(useSettingsStore.getState().settings),
+            includeWordNotes: true,
           },
           {
             onProgress: (p) => useWebDavStore.getState().setProgress(p),

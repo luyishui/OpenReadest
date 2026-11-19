@@ -1,4 +1,8 @@
 {
+  "Applies to the same word in all books": "Applies to the same word in all books",
+  "Apply to the same word in all books": "Apply to the same word in all books",
+  "Changes update this word note in all books": "Changes update this word note in all books",
+  "Failed to save note. Please try again.": "Failed to save note. Please try again.",
   "LXGW WenKai GB Screen": "LXGW WenKai SC",
   "LXGW WenKai TC": "LXGW WenKai TC",
   "Source Han Serif CN": "Source Han Serif",
@@ -8,6 +12,9 @@
   "Are you sure to delete {{count}} selected book(s)?_other": "Are you sure to delete {{count}} selected books?",
   "Search in {{count}} Book(s)..._one": "Search in {{count}} book...",
   "Search in {{count}} Book(s)..._other": "Search in {{count}} books...",
+  "Stop applying to all books": "Stop applying to all books",
+  "Word note": "Word note",
+  "Word note for all books": "Word note for all books",
   "{{count}} pages left in chapter_one": "<0>{{count}}</0><1> page left in chapter</1>",
   "{{count}} pages left in chapter_other": "<0>{{count}}</0><1> pages left in chapter</1>",
   "Deleted {{count}} file(s)_one": "Deleted {{count}} file",

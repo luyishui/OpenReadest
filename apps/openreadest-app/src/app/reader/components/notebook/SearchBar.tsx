@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 
 import { useBookDataStore } from '@/store/bookDataStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { resolveWordNote } from '@/utils/wordNotes';
 import { useTranslation } from '@/hooks/useTranslation';
 import { BookNote } from '@/types/book';
 import { useResponsiveSize } from '@/hooks/useResponsiveSize';
@@ -108,7 +110,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }
 
     const { booknotes: allNotes = [] } = config;
-    const validNotes = allNotes.filter((note) => !note.deletedAt);
+    const validNotes = allNotes
+      .filter((note) => !note.deletedAt)
+      .map((note) => resolveWordNote(note, useSettingsStore.getState().settings.wordNotes));
 
     const results = filterNotes(validNotes, term);
     onSearchResultChange(results);

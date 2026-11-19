@@ -17,6 +17,9 @@ import { eventDispatcher } from '@/utils/event';
 import { getBookDirFromLanguage } from '@/utils/book';
 import { Overlay } from '@/components/Overlay';
 import { saveSysSettings } from '@/helpers/settings';
+import { saveNoteScope } from '@/helpers/wordNotes';
+import { deleteBooknote } from '@/helpers/annotations';
+import { resolveWordNote } from '@/utils/wordNotes';
 import { NOTE_PREFIX } from '@/types/view';
 import useShortcuts from '@/hooks/useShortcuts';
 import BooknoteItem from '../sidebar/BooknoteItem';
@@ -36,7 +39,7 @@ const Notebook: React.FC = ({}) => {
   const { notebookWidth, isNotebookVisible, isNotebookPinned } = useNotebookStore();
   const { notebookNewAnnotation, notebookEditAnnotation, setNotebookPin } = useNotebookStore();
   const { getBookData, getConfig, saveConfig, updateBooknotes } = useBookDataStore();
-  const { getView, getViewSettings } = useReaderStore();
+  const { getView, getViewsById, getViewSettings } = useReaderStore();
   const { getNotebookWidth, setNotebookWidth, setNotebookVisible, toggleNotebookPin } =
     useNotebookStore();
   const { setNotebookNewAnnotation, setNotebookEditAnnotation } = useNotebookStore();
@@ -101,7 +104,7 @@ const Notebook: React.FC = ({}) => {
     setNotebookEditAnnotation(null);
   };
 
-  const handleSaveNote = (selection: TextSelection, note: string) => {
+  const handleSaveNote = async (selection: TextSelection, note: string, allBooks: boolean) => {
     if (!sideBarBookKey) return;
     const view = getView(sideBarBookKey);
     const config = getConfig(sideBarBookKey)!;
@@ -110,16 +113,26 @@ const Notebook: React.FC = ({}) => {
     if (!cfi) return;
 
     const { booknotes: annotations = [] } = config;
-    const annotation: BookNote = {
-      id: uniqueId(),
-      type: 'annotation',
-      cfi,
-      note,
-      text: selection.text,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    view?.addAnnotation({ ...annotation, value: `${NOTE_PREFIX}${annotation.cfi}` });
+    const annotation = await saveNoteScope(
+      envConfig,
+      {
+        id: uniqueId(),
+        type: 'annotation',
+        cfi,
+        note,
+        text: selection.text,
+        style: settings.globalReadSettings.highlightStyle,
+        color:
+          settings.globalReadSettings.highlightStyles[settings.globalReadSettings.highlightStyle],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      allBooks,
+    );
+    for (const bookView of getViewsById(sideBarBookKey.split('-')[0]!)) {
+      bookView?.addAnnotation(annotation);
+      bookView?.addAnnotation({ ...annotation, value: `${NOTE_PREFIX}${annotation.cfi}` });
+    }
     annotations.push(annotation);
     const updatedConfig = updateBooknotes(sideBarBookKey, annotations);
     if (updatedConfig) {
@@ -128,20 +141,35 @@ const Notebook: React.FC = ({}) => {
     setNotebookNewAnnotation(null);
   };
 
-  const handleEditNote = (note: BookNote, isDelete: boolean) => {
+  const handleEditNote = async (note: BookNote, isDelete: boolean, allBooks = false) => {
     if (!sideBarBookKey) return;
-    const view = getView(sideBarBookKey);
+    if (isDelete) {
+      try {
+        await deleteBooknote(envConfig, sideBarBookKey, note);
+        setNotebookEditAnnotation(null);
+      } catch (error) {
+        console.error('Failed to delete note:', error);
+        eventDispatcher.dispatch('toast', {
+          type: 'error',
+          message: _('Failed to save note. Please try again.'),
+        });
+      }
+      return;
+    }
     const config = getConfig(sideBarBookKey)!;
     const { booknotes: annotations = [] } = config;
     const existingIndex = annotations.findIndex((item) => item.id === note.id);
     if (existingIndex === -1) return;
-    if (isDelete) {
-      note.deletedAt = Date.now();
-    } else {
-      note.updatedAt = Date.now();
-    }
+    note = await saveNoteScope(envConfig, { ...note, updatedAt: Date.now() }, allBooks);
     annotations[existingIndex] = note;
-    view?.addAnnotation({ ...note, value: `${NOTE_PREFIX}${note.cfi}` }, true);
+    for (const bookView of getViewsById(sideBarBookKey.split('-')[0]!)) {
+      bookView?.addAnnotation({ ...note, value: `${NOTE_PREFIX}${note.cfi}` }, true);
+      if (note.style) {
+        bookView?.addAnnotation(note, true);
+        bookView?.addAnnotation(note);
+      }
+      bookView?.addAnnotation({ ...note, value: `${NOTE_PREFIX}${note.cfi}` });
+    }
     const updatedConfig = updateBooknotes(sideBarBookKey, annotations);
     if (updatedConfig) {
       saveConfig(envConfig, sideBarBookKey, updatedConfig, settings);
@@ -173,6 +201,7 @@ const Notebook: React.FC = ({}) => {
   const { booknotes: allNotes = [] } = config || {};
   const annotationNotes = allNotes
     .filter((note) => note.type === 'annotation' && note.note && !note.deletedAt)
+    .map((note) => resolveWordNote(note, settings.wordNotes))
     .sort((a, b) => b.createdAt - a.createdAt);
   const excerptNotes = allNotes
     .filter((note) => note.type === 'excerpt' && note.text && !note.deletedAt)
@@ -335,7 +364,7 @@ const Notebook: React.FC = ({}) => {
                       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions*/}
                       <div
                         className='font-size-xs cursor-pointer align-bottom text-red-500 hover:text-red-600'
-                        onClick={handleEditNote.bind(null, item, true)}
+                        onClick={() => void handleEditNote(item, true)}
                         aria-label={_('Delete')}
                       >
                         {_('Delete')}
@@ -359,7 +388,10 @@ const Notebook: React.FC = ({}) => {
             )}
           </div>
           {(notebookNewAnnotation || notebookEditAnnotation) && !isSearchBarVisible && (
-            <NoteEditor onSave={handleSaveNote} onEdit={(item) => handleEditNote(item, false)} />
+            <NoteEditor
+              onSave={handleSaveNote}
+              onEdit={(item, allBooks) => handleEditNote(item, false, allBooks)}
+            />
           )}
           <ul>
             {filteredAnnotationNotes.map((item, index) => (
