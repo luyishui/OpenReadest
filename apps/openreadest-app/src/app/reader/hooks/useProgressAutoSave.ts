@@ -3,6 +3,7 @@ import { useEnv } from '@/context/EnvContext';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { useReaderStore } from '@/store/readerStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useWebDavStore } from '@/store/webdavStore';
 import { throttle } from '@/utils/throttle';
 
 export const useProgressAutoSave = (bookKey: string) => {
@@ -16,6 +17,7 @@ export const useProgressAutoSave = (bookKey: string) => {
     throttle(() => {
       setTimeout(async () => {
         const config = getConfig(bookKey)!;
+        if (!config || useWebDavStore.getState().isSyncing) return;
         const settings = useSettingsStore.getState().settings;
         await saveConfig(envConfig, bookKey, config, settings);
       }, 5000);

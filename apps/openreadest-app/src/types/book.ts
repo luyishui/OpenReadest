@@ -320,6 +320,7 @@ export interface BookSearchResult {
 }
 
 export interface BookConfig {
+  progressUpdatedAt?: number;
   bookHash?: string;
   metaHash?: string;
   progress?: [number, number]; // [current pagenum, total pagenum], 1-based page number

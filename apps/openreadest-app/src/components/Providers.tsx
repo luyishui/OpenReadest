@@ -18,6 +18,7 @@ import { useEinkMode } from '@/hooks/useEinkMode';
 import { cacheSystemUILanguage } from '@/utils/lang';
 import { getLocale } from '@/utils/misc';
 import { getDirFromUILanguage } from '@/utils/rtl';
+import WebDavAutoSyncRunner from '@/app/library/components/WebDavAutoSyncRunner';
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   const { envConfig, appService } = useEnv();
@@ -77,7 +78,10 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthProvider>
       <IconContext.Provider value={{ size: `${iconSize}px` }}>
-        <SyncProvider>{children}</SyncProvider>
+        <SyncProvider>
+          <WebDavAutoSyncRunner />
+          {children}
+        </SyncProvider>
       </IconContext.Provider>
     </AuthProvider>
   );
